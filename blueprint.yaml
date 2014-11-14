@@ -1,0 +1,46 @@
+imports:
+    -   http://www.getcloudify.org/spec/cloudify/3.0/types.yaml
+
+plugins:
+    saltstack:
+        derived_from: cloudify.plugins.agent_plugin
+        properties:
+            folder: saltstack-plugin
+
+types:
+    saltification:
+        derived_from: cloudify.types.base
+        properties:
+            -   minion_installation_script
+            -   master_ssh_user
+            -   master_private_ssh_key
+            -   minion_config
+        interfaces:
+            cloudify.interfaces.lifecycle:
+                -   create:  saltstack.tasks.install_minion
+                -   configure:  saltstack.tasks.configure_minion
+                -   start:  saltstack.tasks.start_minion
+                -   stop:  saltstack.tasks.stop_minion
+
+blueprint:
+    name: salt-test
+    nodes:
+        -   name:   myhost
+            type:   cloudify.types.host
+            properties:
+                ip: 127.0.0.1
+                cloudify_agent:
+                    key: /home/vagrant/.ssh/cloudify_private_key
+
+        -   name:   dummy abstraction layer # cannot use lifecycle interface in host
+            type:   saltification
+            properties:
+                minion_installation_script: /vagrant/plugins/saltstack-plugin/saltstack/default_minion_installation.sh
+                master_ssh_user: vagrant
+                master_private_ssh_key: /vagrant/salt-master-key.pem
+                minion_config:
+                    master: 192.168.50.10
+                    id: minion1
+            relationships:
+                -   type:   cloudify.relationships.contained_in
+                    target: myhost
