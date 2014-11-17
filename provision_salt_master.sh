@@ -14,6 +14,8 @@ sudo apt-get install --yes salt-master
 sudo apt-get install --yes salt-api
 
 sudo tee -a /etc/salt/master <<EOF
+log_level_logfile: info
+
 rest_cherrypy:
     port: 8000
     disable_ssl: True
