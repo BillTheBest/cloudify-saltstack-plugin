@@ -25,6 +25,35 @@ external_auth:
     pam:
         vagrant:
             - .*
+
+file_roots:
+    base:
+        - /srv/salt
+EOF
+
+sudo mkdir /srv/salt
+
+sudo tee -a /srv/salt/top.sls <<EOF
+base:
+  '*':
+    - state1
+  'role:jboss':
+    - match: grain
+    - state2
+EOF
+
+sudo tee -a /srv/salt/state1.sls <<EOF
+tree:
+  pkg.installed
+EOF
+
+sudo tee -a /srv/salt/state2.sls <<EOF
+/home/vagrant/testfile:
+  file.managed:
+    - user: vagrant
+    - group: vagrant
+    - mode: 644
+    - contents: This is a salt test file, minions with jboss role should get it.
 EOF
 
 sudo service salt-master restart

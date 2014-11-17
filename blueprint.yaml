@@ -12,6 +12,7 @@ types:
         derived_from: cloudify.types.base
         properties:
             -   minion_installation_script
+            -   salt_api_port
             -   master_ssh_user
             -   master_private_ssh_key
             -   minion_config
@@ -37,11 +38,14 @@ blueprint:
             properties:
                 minion_installation_script: /vagrant/plugins/saltstack-plugin/saltstack/default_minion_installation.sh
                 master_ssh_user: vagrant
+                salt_api_port: 8000
                 master_private_ssh_key: /vagrant/salt-master-key.pem
                 minion_config:
                     master: 192.168.50.10
                     id: minion1
                     log_level_logfile: info
+                    grains:
+                        role: jboss
             relationships:
                 -   type:   cloudify.relationships.contained_in
                     target: myhost
