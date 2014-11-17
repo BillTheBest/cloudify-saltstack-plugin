@@ -19,11 +19,14 @@
 
 import os
 import subprocess
+import time
 
 import yaml
 
 from cloudify.decorators import operation
-from cloudify.exceptions import NonRecoverableError
+from cloudify.exceptions import NonRecoverableError, RecoverableError
+
+import saltapimgr
 
 
 @operation
@@ -117,46 +120,90 @@ def configure_minion(ctx, *args, **kwargs):
     save_minion_config(config)
 
 
+# TODO: this operation does three different things, can we split it some way
+# or give it a different name?
 @operation
 def start_minion(ctx, *args, **kwargs):
-    ctx.logger.info('Starting salt minion')
-    subprocess.call(['sudo', 'service', 'salt-minion', 'start'])
+    def start_service():
+        ctx.logger.info('Starting salt minion')
+        subprocess.call(['sudo', 'service', 'salt-minion', 'start'])
+
+    def authorize_minion(minion_id):
+        def get_auth_command(minion_id):
+            key_file = ctx.properties['master_private_ssh_key']
+            user = ctx.properties['master_ssh_user']
+            host = ctx.properties['minion_config']['master']
+            target = '{}@{}'.format(user, host)
+
+            accept_minion_loop = """
+            for i in `seq 1 10`; do
+                sudo salt-key --yes --accept={0}
+                sudo salt-key --list=accepted | tail -n +2 | grep {0}
+                if [ $? -eq 0 ]; then exit 0; fi
+                sleep 2
+            done
+            sudo salt-key --list=accepted | tail -n +2 | grep {0}
+            if [ $? -eq 0 ]; then exit 0; else exit 1; fi
+            """.format(minion_id)
+
+            return [
+                'ssh',
+                '-i', key_file,
+                '-oStrictHostKeyChecking=no',
+                '-oUserKnownHostsFile=/dev/null',
+                target,
+                accept_minion_loop
+            ]
+
+        ctx.logger.info('Authorizing {}...'.format(minion_id))
+        try:
+            subprocess.check_call(get_auth_command(minion_id))
+        except subprocess.CalledProcessError as e:
+            raise NonRecoverableError('{} authorization failed.'.format(minion_id))
+        else:
+            ctx.logger.info('{} authorization successful.'.format(minion_id))
+
+    def execute_initial_state(minion_id):
+        host = ctx.properties['minion_config']['master']
+        port = ctx.properties['salt_api_port']
+        user = ctx.properties['master_ssh_user']
+        salt_api_url = 'http://{}:{}'.format(host, port)
+        auth_data = {'eauth': 'pam', 'username': user, 'password': 'vagrant'}
+        mgr = saltapimgr.SaltRESTManager(salt_api_url, auth_data)
+
+        ctx.logger.info('Connecting with Salt API')
+        resp, result = mgr.log_in()
+        if not resp.ok:
+            ctx.logger.error('Got response {}'.format(resp))
+            ctx.logger.error('Result: {}'.format(result))
+            raise NonRecoverableError('Unable to connect with Salt API.')
+
+        ping_minion = {'client': 'local', 'tgt': minion_id, 'fun': 'test.ping'}
+        for i in xrange(10):
+            time.sleep(2)
+            resp, result = mgr.call(ping_minion)
+            if resp.ok and minion_id in result[0]:
+                break
+        else:
+            raise RecoverableError('{} does not respond.'.format(minion_id))
+
+        ctx.logger.info('Executing highstate on {}'.format(minion_id))
+        resp, result = mgr.highstate(minion_id)
+        if not resp.ok:
+            ctx.logger.error('Got response {}'.format(resp))
+            ctx.logger.error('Result: {}'.format(result))
+            raise NonRecoverableError('Unable to execute highstate.')
+
+        ctx.logger.info('Disconnecting from Salt API')
+        resp, result = mgr.log_out()
+        if not resp.ok:
+            raise NonRecoverableError('Unable to disconnect from Salt API.')
 
     minion_id = ctx.properties['minion_config']['id']
+    start_service()
+    authorize_minion(minion_id)
+    execute_initial_state(minion_id)
 
-    def get_auth_command():
-        key_file = ctx.properties['master_private_ssh_key']
-        user = ctx.properties['master_ssh_user']
-        host = ctx.properties['minion_config']['master']
-        target = '{}@{}'.format(user, host)
-
-        accept_minion_loop = """
-        for i in `seq 1 10`; do
-            sudo salt-key --yes --accept={0}
-            sudo salt-key --list=accepted | tail -n +2 | grep {0}
-            if [ $? -eq 0 ]; then exit 0; fi
-            sleep 2
-        done
-        sudo salt-key --list=accepted | tail -n +2 | grep {0}
-        if [ $? -eq 0 ]; then exit 0; else exit 1; fi
-        """.format(minion_id)
-
-        return [
-            'ssh',
-            '-i', key_file,
-            '-oStrictHostKeyChecking=no',
-            '-oUserKnownHostsFile=/dev/null',
-            target,
-            accept_minion_loop
-        ]
-
-    ctx.logger.info('Authorizing {}...'.format(minion_id))
-    try:
-        subprocess.check_call(get_auth_command())
-    except subprocess.CalledProcessError as e:
-        raise NonRecoverableError('{} authorization failed.'.format(minion_id))
-    else:
-        ctx.logger.info('{} authorization successful.'.format(minion_id))
 
 @operation
 def stop_minion(ctx, *args, **kwargs):
