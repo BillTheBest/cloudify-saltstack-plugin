@@ -29,6 +29,9 @@ from cloudify.exceptions import NonRecoverableError, RecoverableError
 import saltapimgr
 
 
+_DEFAULT_INSTALLATION_SCRIPT_PATH = 'utility/default_minion_installation.sh'
+
+
 @operation
 def install_minion(ctx, *args, **kwargs):
     def do_install_minion():
@@ -59,7 +62,7 @@ def install_minion(ctx, *args, **kwargs):
         ctx.logger.info('Installation script not provided, using default.')
         return os.path.join(
             os.path.dirname(__file__),
-            "default_minion_installation.sh"
+            *_DEFAULT_INSTALLATION_SCRIPT_PATH.split('/')
         )
 
     def report_error(command, descr, logs):
