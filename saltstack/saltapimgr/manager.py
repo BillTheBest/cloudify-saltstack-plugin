@@ -364,3 +364,12 @@ class SaltRESTManager(object):
                         )
                 )
         return response, result
+
+    def highstate(self, target):
+        '''Executes `highstate' on given target.
+        -> (requests.Response, result)
+        '''
+        return self.call(
+                {'tgt': target, 'fun': 'salt.highstate'},
+                use_yaml=True
+            )
