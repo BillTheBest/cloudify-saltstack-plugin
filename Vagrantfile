@@ -5,8 +5,8 @@
 VAGRANTFILE_API_VERSION = "2"
 
 
-MASTER_BOX_NAME = "cloudify"
-MINION_BOX_NAME = "cloudify"
+MASTER_BOX_NAME = "cloudify3.1rc1"
+MINION_BOX_NAME = "cloudify3.1rc1"
 
 MASTER_CPUS = 1
 MASTER_MEMORY = 1024
@@ -42,6 +42,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
                 vb.memory = "#{MINIONS[i][2]}"
             end
             vm.vm.network :private_network, ip: "#{MINIONS[i][3]}"
+            vm.vm.provision "shell", privileged: false, inline: "echo '{\n    \"host_ip\": \"localhost\",\n    \"agent_user\": \"vagrant\",\n    \"agent_private_key_path\": \"/home/vagrant/.ssh/id_rsa\"\n}' > ~/cloudify/inputs.json"
         end
     end
 end
