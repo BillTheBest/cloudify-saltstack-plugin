@@ -22,8 +22,10 @@ import time
 
 import yaml
 
+from cloudify import ctx
 from cloudify.decorators import operation
-from cloudify.exceptions import NonRecoverableError, RecoverableError
+from cloudify.exceptions import NonRecoverableError
+from cloudify.exceptions import RecoverableError
 
 import saltapimgr
 
@@ -32,7 +34,7 @@ _DEFAULT_INSTALLATION_SCRIPT_PATH = 'utility/default_minion_installation.sh'
 
 
 @operation
-def install_minion(ctx, *args, **kwargs):
+def install_minion(*args, **kwargs):
     def do_install_minion():
         command = get_installation_script()
         try:
@@ -47,7 +49,7 @@ def install_minion(ctx, *args, **kwargs):
             verify_installation(logs)
 
     def get_installation_script():
-        command = ctx.properties['minion_installation_script']
+        command = ctx.node.properties['minion_installation_script']
         if not command:
             command = get_default_installation_script()
         elif not os.path.isfile(command):
@@ -91,7 +93,7 @@ def install_minion(ctx, *args, **kwargs):
 
 
 @operation
-def configure_minion(ctx, *args, **kwargs):
+def configure_minion(*args, **kwargs):
     DEFAULT_CONFIG_PATH = '/etc/salt/minion'
 
     def load_minion_config(path=DEFAULT_CONFIG_PATH):
@@ -118,23 +120,23 @@ def configure_minion(ctx, *args, **kwargs):
 
     ctx.logger.info('Updating minion config with blueprint data')
     config = load_minion_config()
-    config.update(ctx.properties['minion_config'])
+    config.update(ctx.node.properties['minion_config'])
     save_minion_config(config)
 
 
 # TODO: this operation does three different things, can we split it some way
 # or give it a different name?
 @operation
-def start_minion(ctx, *args, **kwargs):
+def start_minion(*args, **kwargs):
     def start_service():
         ctx.logger.info('Starting salt minion')
         subprocess.call(['sudo', 'service', 'salt-minion', 'start'])
 
     def authorize_minion(minion_id):
         def get_auth_command(minion_id):
-            key_file = ctx.properties['master_private_ssh_key']
-            user = ctx.properties['master_ssh_user']
-            host = ctx.properties['minion_config']['master']
+            key_file = ctx.node.properties['master_private_ssh_key']
+            user = ctx.node.properties['master_ssh_user']
+            host = ctx.node.properties['minion_config']['master']
             target = '{0}@{1}'.format(user, host)
 
             accept_minion_loop = """
@@ -166,9 +168,9 @@ def start_minion(ctx, *args, **kwargs):
             ctx.logger.info('{0} authorization successful.'.format(minion_id))
 
     def execute_initial_state(minion_id):
-        host = ctx.properties['minion_config']['master']
-        port = ctx.properties['salt_api_port']
-        user = ctx.properties['master_ssh_user']
+        host = ctx.node.properties['minion_config']['master']
+        port = ctx.node.properties['salt_api_port']
+        user = ctx.node.properties['master_ssh_user']
         salt_api_url = 'http://{0}:{1}'.format(host, port)
         auth_data = {'eauth': 'pam', 'username': user, 'password': 'vagrant'}
         mgr = saltapimgr.SaltRESTManager(salt_api_url, auth_data)
@@ -201,13 +203,13 @@ def start_minion(ctx, *args, **kwargs):
         if not resp.ok:
             raise NonRecoverableError('Unable to disconnect from Salt API.')
 
-    minion_id = ctx.properties['minion_config']['id']
+    minion_id = ctx.node.properties['minion_config']['id']
     start_service()
     authorize_minion(minion_id)
     execute_initial_state(minion_id)
 
 
 @operation
-def stop_minion(ctx, *args, **kwargs):
+def stop_minion(*args, **kwargs):
     ctx.logger.info('Nothing to do.  We do not stop salt-minion service because')
     ctx.logger.info('there may be multiple minions running on the same machine.')
