@@ -1,6 +1,21 @@
 # coding=utf-8
 
 
+###############################################################################
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+###############################################################################
+
+
 import time
 
 import requests
@@ -20,7 +35,7 @@ def _log_http_request(logger, level, prefix, request):
     log.log(
             logger,
             level,
-            '{}: sending {}, headers = {}, body = \'{}\''.format(
+            '{0}: sending {1}, headers = {2}, body = \'{3}\''.format(
                     prefix,
                     str(request).strip(),
                     str(request.headers).strip(),
@@ -110,7 +125,7 @@ def collection_translation(commands, logger, use_yaml):
         command_list.append(command_translation(c, False))
     log.debug(
             logger,
-            'translation: translated to \'{}\''.format(
+            'translation: translated to \'{0}\''.format(
                     str(command_list).strip()
                 )
         )

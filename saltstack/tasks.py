@@ -1,4 +1,3 @@
-#!/usr/bin/python
 # coding=utf-8
 
 
@@ -53,9 +52,9 @@ def install_minion(ctx, *args, **kwargs):
             command = get_default_installation_script()
         elif not os.path.isfile(command):
             raise NonRecoverableError(
-                'Installation script {} does not exist'.format(command)
+                'Installation script {0} does not exist'.format(command)
             )
-        ctx.logger.info('Installing salt minion using {}'.format(command))
+        ctx.logger.info('Installing salt minion using {0}'.format(command))
         return command
 
     def get_default_installation_script():
@@ -66,9 +65,9 @@ def install_minion(ctx, *args, **kwargs):
         )
 
     def report_error(command, descr, logs):
-        msg_header = '{} {}. Command output:\n'.format(command, descr)
-        msg_footer = '---END OF OUTPUT FROM {}---\n'.format(command)
-        ctx.logger.error('{}{}{}'.format(msg_header, logs, msg_footer))
+        msg_header = '{0} {1}. Command output:\n'.format(command, descr)
+        msg_footer = '---END OF OUTPUT FROM {0}---\n'.format(command)
+        ctx.logger.error('{0}{1}{2}'.format(msg_header, logs, msg_footer))
         raise NonRecoverableError("Failed to install salt minion.")
 
     def verify_installation(logs):
@@ -96,7 +95,7 @@ def configure_minion(ctx, *args, **kwargs):
     DEFAULT_CONFIG_PATH = '/etc/salt/minion'
 
     def load_minion_config(path=DEFAULT_CONFIG_PATH):
-        ctx.logger.info('Loading minion config from {}'.format(path))
+        ctx.logger.info('Loading minion config from {0}'.format(path))
         with open(path, 'r') as f:
             config = yaml.load(f.read(), Loader=yaml.SafeLoader)
             if config:
@@ -115,7 +114,7 @@ def configure_minion(ctx, *args, **kwargs):
             ))
         subprocess.call(['sudo', 'cp', '--remove-destination', temp_file, path])
         subprocess.call(['rm', temp_file])
-        ctx.logger.info('Saved minion config to {}'.format(path))
+        ctx.logger.info('Saved minion config to {0}'.format(path))
 
     ctx.logger.info('Updating minion config with blueprint data')
     config = load_minion_config()
@@ -136,7 +135,7 @@ def start_minion(ctx, *args, **kwargs):
             key_file = ctx.properties['master_private_ssh_key']
             user = ctx.properties['master_ssh_user']
             host = ctx.properties['minion_config']['master']
-            target = '{}@{}'.format(user, host)
+            target = '{0}@{1}'.format(user, host)
 
             accept_minion_loop = """
             for i in `seq 1 10`; do
@@ -158,27 +157,27 @@ def start_minion(ctx, *args, **kwargs):
                 accept_minion_loop
             ]
 
-        ctx.logger.info('Authorizing {}...'.format(minion_id))
+        ctx.logger.info('Authorizing {0}...'.format(minion_id))
         try:
             subprocess.check_call(get_auth_command(minion_id))
         except subprocess.CalledProcessError as e:
-            raise NonRecoverableError('{} authorization failed.'.format(minion_id))
+            raise NonRecoverableError('{0} authorization failed.'.format(minion_id))
         else:
-            ctx.logger.info('{} authorization successful.'.format(minion_id))
+            ctx.logger.info('{0} authorization successful.'.format(minion_id))
 
     def execute_initial_state(minion_id):
         host = ctx.properties['minion_config']['master']
         port = ctx.properties['salt_api_port']
         user = ctx.properties['master_ssh_user']
-        salt_api_url = 'http://{}:{}'.format(host, port)
+        salt_api_url = 'http://{0}:{1}'.format(host, port)
         auth_data = {'eauth': 'pam', 'username': user, 'password': 'vagrant'}
         mgr = saltapimgr.SaltRESTManager(salt_api_url, auth_data)
 
         ctx.logger.info('Connecting with Salt API')
         resp, result = mgr.log_in()
         if not resp.ok:
-            ctx.logger.error('Got response {}'.format(resp))
-            ctx.logger.error('Result: {}'.format(result))
+            ctx.logger.error('Got response {0}'.format(resp))
+            ctx.logger.error('Result: {0}'.format(result))
             raise NonRecoverableError('Unable to connect with Salt API.')
 
         ping_minion = {'client': 'local', 'tgt': minion_id, 'fun': 'test.ping'}
@@ -188,13 +187,13 @@ def start_minion(ctx, *args, **kwargs):
             if resp.ok and minion_id in result[0]:
                 break
         else:
-            raise RecoverableError('{} does not respond.'.format(minion_id))
+            raise RecoverableError('{0} does not respond.'.format(minion_id))
 
-        ctx.logger.info('Executing highstate on {}'.format(minion_id))
+        ctx.logger.info('Executing highstate on {0}'.format(minion_id))
         resp, result = mgr.highstate(minion_id)
         if not resp.ok:
-            ctx.logger.error('Got response {}'.format(resp))
-            ctx.logger.error('Result: {}'.format(result))
+            ctx.logger.error('Got response {0}'.format(resp))
+            ctx.logger.error('Result: {0}'.format(result))
             raise NonRecoverableError('Unable to execute highstate.')
 
         ctx.logger.info('Disconnecting from Salt API')

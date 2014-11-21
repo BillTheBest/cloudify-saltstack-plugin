@@ -1,6 +1,21 @@
 # coding=utf-8
 
 
+###############################################################################
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+###############################################################################
+
+
 import requests
 
 import exceptions
@@ -113,8 +128,8 @@ class SaltRESTManager(object):
             self._session = requests.Session(**params)
         log.debug(
                 self.logger,
-                'log in: logging in with auth data = {}'
-                ' and session options = {}'.format(
+                'log in: logging in with auth data = {0}'
+                ' and session options = {1}'.format(
                         log.cover_auth_data(
                                 self._auth_data,
                                 self._show_auth_data
@@ -132,21 +147,21 @@ class SaltRESTManager(object):
             self.token = result
             log.info(
                     self.logger,
-                    'log in: successfully logged in, token = {}'.format(
+                    'log in: successfully logged in, token = {0}'.format(
                             str(self.token['token']).strip()
                         )
                 )
             log.debug(
                     self.logger,
-                    'log in: token = {}'.format(
+                    'log in: token = {0}'.format(
                             str(self.token).strip()
                         )
                 )
         else:
             log.info(
                     self.logger,
-                    'log in: failed to log in, HTTP return code = {},'
-                    ' reason = \'{}\''. format(
+                    'log in: failed to log in, HTTP return code = {0},'
+                    ' reason = \'{1}\''. format(
                             str(response.status_code).strip(),
                             str(response.reason).strip()
                         )
@@ -235,7 +250,7 @@ class SaltRESTManager(object):
                 return None, None
         log.debug(
                 self.logger,
-                'log out: invalidating token \'{}\''.format(
+                'log out: invalidating token \'{0}\''.format(
                         str(self.token['token']).strip()
                     )
             )
@@ -248,15 +263,15 @@ class SaltRESTManager(object):
         if response.ok:
             log.info(
                     self.logger,
-                    'log out: succesfully cleared token \'{}\''.format(
+                    'log out: succesfully cleared token \'{0}\''.format(
                             str(self.token['token']).strip()
                         )
                 )
         else:
             log.info(
                     self.logger,
-                    'log out: failed to clear token \'{}\','
-                    ' HTTP return code = {}, reason = \'{}\''.format(
+                    'log out: failed to clear token \'{0}\','
+                    ' HTTP return code = {1}, reason = \'{2}\''.format(
                             str(self.token['token']).strip(),
                             str(response.status_code).strip(),
                             str(response.reason).strip()
@@ -271,11 +286,10 @@ class SaltRESTManager(object):
     INTERPRET_AS_COLLECTION = 1
     RAW_INTERPRETATION = 2
 
-    def call(
-            self,
-            func,
-            action = DEFAULT_ACTION,
-            use_yaml = True):
+    def call(self,
+             func,
+             action = DEFAULT_ACTION,
+             use_yaml = True):
         '''Calls the requested function(s) using a raw call
         to the REST API. -> (requests.Response, results)
 
@@ -329,7 +343,7 @@ class SaltRESTManager(object):
             single = True
             log.debug(
                     self.logger,
-                    'call: calling \'{}\''.format(
+                    'call: calling \'{0}\''.format(
                             str(func).strip()
                         )
                 )
@@ -350,7 +364,7 @@ class SaltRESTManager(object):
                 )
             log.debug(
                     self.logger,
-                    'call: results = \'{}\''.format(
+                    'call: results = \'{0}\''.format(
                             str(result).strip()
                         )
                 )
@@ -358,7 +372,7 @@ class SaltRESTManager(object):
             log.info(
                     self.logger,
                     'call: failed to call given commands,'
-                    ' HTTP return code = {}, reason = \'{}\''.format(
+                    ' HTTP return code = {0}, reason = \'{1}\''.format(
                             str(response.status_code).strip(),
                             str(response.reason).strip()
                         )
