@@ -1,0 +1,17 @@
+imports:
+    -   http://www.getcloudify.org/spec/cloudify/3.1rc1/types.yaml
+
+plugins:
+    saltstack:
+        executor: host_agent
+        source: http://localhost:8001/plugin.zip
+
+node_types:
+    saltification:
+        derived_from: cloudify.nodes.Root
+        properties:
+            minion_installation_script: {}
+            salt_api_port: {}
+            master_ssh_user: {}
+            master_private_ssh_key: {}
+            minion_config: {}
