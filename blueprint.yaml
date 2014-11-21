@@ -2,21 +2,7 @@ tosca_definitions_version: cloudify_dsl_1_0
 
 imports:
     -   http://www.getcloudify.org/spec/cloudify/3.1rc1/types.yaml
-
-plugins:
-    saltstack:
-        executor: host_agent
-        source: saltstack-plugin
-
-node_types:
-    saltification:
-        derived_from: cloudify.nodes.Root
-        properties:
-            minion_installation_script: {}
-            salt_api_port: {}
-            master_ssh_user: {}
-            master_private_ssh_key: {}
-            minion_config: {}
+    -   http://localhost:8001/plugin.yaml
 
 node_templates:
     myhost:
