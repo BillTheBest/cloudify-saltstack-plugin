@@ -5,44 +5,32 @@
 VAGRANTFILE_API_VERSION = "2"
 
 
-MASTER_BOX_NAME = "cloudify3.1rc1"
-MINION_BOX_NAME = "cloudify3.1rc1"
-
-MASTER_CPUS = 1
-MASTER_MEMORY = 1024
-
-MINION_CPUS = MASTER_CPUS
-MINION_MEMORY = MASTER_MEMORY
-MINIONS = []
-#             host name | machine cpus | machine memory | machine private ip
-MINIONS.push(["minion1",  MINION_CPUS,   MINION_MEMORY,   "192.168.50.11"])
-MINIONS.push(["minion2",  MINION_CPUS,   MINION_MEMORY,   "192.168.50.12"])
-
-
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     config.vm.box_check_update = false
 
-    config.vm.define "master", primary: true do |vm|
-        vm.vm.box = "#{MASTER_BOX_NAME}"
-        vm.vm.hostname = "master"
+    config.vm.define "salt-master" do |vm|
+        vm.vm.box = "ubuntu/trusty64"
+        vm.vm.hostname = "salt-master"
         vm.vm.provider "virtualbox" do |vb|
-            vb.cpus = "#{MASTER_CPUS}"
-            vb.memory = "#{MASTER_MEMORY}"
+            vb.cpus = 1
+            vb.memory = 1024
         end
-        vm.vm.network :private_network, ip: "192.168.50.10"
+        vm.vm.network :private_network, ip: "192.168.51.10"
+        vm.vm.provision :shell, inline: "apt-get -y update"
+        vm.vm.provision :shell, inline: "apt-get -y autoremove chef puppet cloud-init"
         vm.vm.provision :shell, path: "provision_salt_master.sh"
     end
 
-    MINIONS.each_index do |i|
-        config.vm.define "#{MINIONS[i][0]}" do |vm|
-            vm.vm.box = "#{MINION_BOX_NAME}"
-            vm.vm.hostname = "#{MINIONS[i][0]}"
-            vm.vm.provider "virtualbox" do |vb|
-                vb.cpus = "#{MINIONS[i][1]}"
-                vb.memory = "#{MINIONS[i][2]}"
-            end
-            vm.vm.network :private_network, ip: "#{MINIONS[i][3]}"
-            vm.vm.provision "shell", privileged: false, inline: "echo '{\n    \"host_ip\": \"localhost\",\n    \"agent_user\": \"vagrant\",\n    \"agent_private_key_path\": \"/home/vagrant/.ssh/id_rsa\"\n}' > ~/cloudify/inputs.json"
+    config.vm.define "cfy-minion" do |vm|
+        vm.vm.box = "cloudify-3.1.0-rc1"
+        vm.vm.hostname = "cfy-minion"
+        vm.vm.provider "virtualbox" do |vb|
+            vb.cpus = 2
+            vb.memory = 2048
         end
+        vm.vm.network :private_network, ip: "192.168.51.11"
+        vm.vm.provision :shell, inline: "echo -e '\\n192.168.51.10 salt' | tee -a /etc/hosts"
+        vm.vm.provision "shell", privileged: false, inline: "echo '{\n    \"host_ip\": \"localhost\",\n    \"agent_user\": \"vagrant\",\n    \"agent_private_key_path\": \"/home/vagrant/.ssh/id_rsa\"\n}' > ~/cloudify/inputs.json"
     end
+
 end

@@ -5,23 +5,18 @@ imports:
 
 plugins:
     saltstack:
-        executor: central_deployment_agent
+        executor: host_agent
         source: saltstack-plugin
 
 node_types:
     saltification:
         derived_from: cloudify.nodes.Root
         properties:
-            minion_installation_script:
-                default: xxxxx
-            salt_api_port:
-                default: 8000
-            master_ssh_user:
-                default: vagrant
-            master_private_ssh_key:
-                default: xxxxx
-            minion_config:
-                default: xxxxx
+            minion_installation_script: {}
+            salt_api_port: {}
+            master_ssh_user: {}
+            master_private_ssh_key: {}
+            minion_config: {}
 
 node_templates:
     myhost:
@@ -33,16 +28,16 @@ node_templates:
                 key: /home/vagrant/.ssh/id_rsa
                 wait_started_timeout: 60
 
-    dummy abstraction layer: # cannot use lifecycle interface in Compute
+    dummy abstraction layer:
         type:   saltification
         properties:
-            minion_installation_script: /vagrant/plugins/saltstack-plugin/saltstack/utility/default_minion_installation.sh
+            minion_installation_script: /vagrant/install_minion.sh
             master_ssh_user: vagrant
             salt_api_port: 8000
-            master_private_ssh_key: /vagrant/salt-master-key.pem
+            master_private_ssh_key: /home/vagrant/.ssh/id_rsa
             minion_config:
-                master: 192.168.50.10
-                id: minion1
+                master: salt
+                id: fancy_minion
                 log_level_logfile: info
                 grains:
                     role: jboss

@@ -1,17 +1,13 @@
 set -e
 
-# for some reason, default cloudify box has broken and missing packages.
-sudo apt-get install --yes --fix-broken
-sudo apt-get install --yes --fix-missing
+echo 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDXh+bGLllCRjtfY1qnvDS3GZLQBgLk1+P8J+H2xxSruIxIsr77TTo+cVWy9lCt5f5OFCeqWP3vVIj+aND4RQu5fs2Pixkbg4Er83D2h4ySKU4TQlV8PLrY7FScCBCX38tM5vUYXrVk2eN0hhpBCoZTHyDvYzLM0Wsiu2xXqNZpnqVtSeGMlfRoAH+XhUUTVrEfRm2HHb/VpodgXBejDI1aDAvrQGc8qpW5Mp7BdVj70MMa/vFmmIeyMKi4CtqSj/1a54g5FGz+mCdPqiwmX3mExRKqMC3hmqUcw18H7VlTXS5v4319SjuAOTBA6oh5avHjOo+TiX71eYAO/XtuM+Cb vagrant@precise64' >> .ssh/authorized_keys
 
-# cloudify box doesn't have add-apt-repository command available by default
-sudo apt-get install --yes python-software-properties
-
-# install salt.
 sudo add-apt-repository --yes ppa:saltstack/salt
 sudo apt-get update
-sudo apt-get install --yes salt-master
-sudo apt-get install --yes salt-api
+sudo apt-get install --yes salt-master salt-api
+
+sudo service salt-master stop
+sudo service salt-api stop
 
 sudo tee -a /etc/salt/master <<EOF
 log_level_logfile: info
@@ -53,8 +49,8 @@ sudo tee -a /srv/salt/state2.sls <<EOF
     - user: vagrant
     - group: vagrant
     - mode: 644
-    - contents: This is a salt test file, minions with jboss role should get it.
+    - contents: This is a salt test file, minions with jboss role should get it. Trololololol.
 EOF
 
-sudo service salt-master restart
-sudo service salt-api restart
+sudo service salt-master start
+sudo service salt-api start
