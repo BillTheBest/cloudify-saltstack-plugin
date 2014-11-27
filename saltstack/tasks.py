@@ -30,6 +30,8 @@ from cloudify.exceptions import RecoverableError
 import saltapimgr
 
 
+_DEFAULT_MINION_ID_PATH = '/etc/salt/minion_id'
+_DEFAULT_MINION_CONFIG_PATH = '/etc/salt/minion'
 _DEFAULT_INSTALLATION_SCRIPT_PATH = 'utility/default_minion_installation.sh'
 
 
@@ -94,7 +96,6 @@ def install_minion(*args, **kwargs):
 
 @operation
 def configure_minion(*args, **kwargs):
-    DEFAULT_CONFIG_PATH = '/etc/salt/minion'
 
     def load_minion_config(path=DEFAULT_CONFIG_PATH):
         ctx.logger.info('Loading minion config from {0}'.format(path))
@@ -105,23 +106,39 @@ def configure_minion(*args, **kwargs):
             else:
                 return {}
 
-    def save_minion_config(config, path=DEFAULT_CONFIG_PATH):
+    def save_and_replace_file(data, path=_DEFAULT_MINION_CONFIG_PATH):
         # TODO: find an elegant way to do this, without temp file juggling.
-        temp_file = '/tmp/cfy-salt-minion-config'
+        temp_file = '/tmp/cfy-temp-file'
         with open(temp_file, 'w+') as f:
-            f.write(yaml.dump(
-                config,
-                default_flow_style=False,
-                Dumper=yaml.SafeDumper
-            ))
+            f.write(data)
         subprocess.call(['sudo', 'cp', '--remove-destination', temp_file, path])
         subprocess.call(['rm', temp_file])
-        ctx.logger.info('Saved minion config to {0}'.format(path))
 
-    ctx.logger.info('Updating minion config with blueprint data')
+    def save_minion_config(config, path=_DEFAULT_MINION_CONFIG_PATH):
+        data = yaml.dump(
+            config,
+            default_flow_style=False,
+            Dumper=_YAML_DUMPER
+        )
+        save_and_replace_file(data, path)
+
+    def save_minion_id(minion_id, path=_DEFAULT_MINION_ID_PATH):
+        save_and_replace_file(minion_id, path)
+
+    ctx.logger.info('Updating minion configuration with blueprint data...')
+
+    subprocess.call(['sudo', 'service', 'salt-minion', 'stop'])
     config = load_minion_config()
     config.update(ctx.node.properties['minion_config'])
     save_minion_config(config)
+
+    minion_id = ctx.node.properties['minion_id']
+    if not minion_id:
+        minion_id = ctx.instance.id
+    save_minion_id(minion_id)
+    ctx.instance.runtime_properties['minion_id'] = minion_id
+
+    ctx.logger.info('Updated configuration config.')
 
 
 # TODO: this operation does three different things, can we split it some way
@@ -203,7 +220,7 @@ def start_minion(*args, **kwargs):
         if not resp.ok:
             raise NonRecoverableError('Unable to disconnect from Salt API.')
 
-    minion_id = ctx.node.properties['minion_config']['id']
+    minion_id = ctx.instance.runtime_properties['minion_id']
     start_service()
     authorize_minion(minion_id)
     execute_initial_state(minion_id)
