@@ -45,7 +45,9 @@ class SaltRESTManager(object):
         * clear_auth_data - clears authorisation data,
         * clear_token - clears a token, without closing an open session,
         * log_out - closes an open session,
-        * logged_in - checks if a session is open.
+        * logged_in - checks if a session is open,
+        * append_grain - appends a given grain,
+        * list_grains - lists all currently used grains.
 
     Interesting properties:
         * token - token structure, if one has been generated.
@@ -385,5 +387,27 @@ class SaltRESTManager(object):
         '''
         return self.call(
                 {'tgt': target, 'fun': 'salt.highstate'},
+                use_yaml=True
+            )
+
+    def append_grain(self, target, grain, value):
+        '''Appends the given grain on all targets.
+        -> (requests.Response, result)
+        '''
+        return self.call(
+                {
+                        'tgt': target,
+                        'fun': 'grains.append',
+                        'arg': [grain, value]
+                    },
+                use_yaml=True
+            )
+
+    def list_grains(self, target):
+        '''Returns a list containg all grains.
+        -> (requests.Response, result)
+        '''
+        return self.call(
+                {'tgt': target, 'fun': 'grains.ls'},
                 use_yaml=True
             )

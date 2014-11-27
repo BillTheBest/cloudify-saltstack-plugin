@@ -140,7 +140,6 @@ def configure_minion(*args, **kwargs):
 
     ctx.logger.info('Updated configuration config.')
 
-
 # TODO: this operation does three different things, can we split it some way
 # or give it a different name?
 @operation
@@ -220,9 +219,41 @@ def start_minion(*args, **kwargs):
         if not resp.ok:
             raise NonRecoverableError('Unable to disconnect from Salt API.')
 
+    def append_grains(minion_id):
+        # grains = a list of pairs
+        grains = ctx.node.properties.get('grains', [])
+        if grains:
+            host = ctx.node.properties['minion_config']['master']
+            port = ctx.node.properties['salt_api_port']
+            salt_api_url = 'http://{0}:{1}'.format(host, port)
+            auth_data = {'eauth': 'pam', 'username': user, 'password': 'vagrant'}
+            mgr = saltapimgr.SaltRESTManager(salt_api_url, auth_data)
+            mgr.log_in()
+            mgr.call({'client': 'local', 'tgt': minion_id, 'fun': 'test.ping'})
+            added_grains = []
+            for i in grains:
+                grain = i.keys()[0]
+                value = i.values()[0]
+                response, result = mgr.append_grain(minion_id, grain, value)
+                if response.ok:
+                    added_grains.append((grain, value))
+            ctx.logger.info('Using additional grains: {0}.'.format(str(added_grains)))
+            response, result = mgr.list_grains(minion_id)
+            all_grains = []
+            if response.ok:
+                all_grains = result[0][minion_id]
+            # TODO: Turn the following into some sort of debug.
+            ctx.logger.info('A complete collection of currently used grains grains: {0}.'.format(str(all_grains)))
+            resp, result = mgr.log_out()
+            if resp.ok:
+                ctx.logger.info('Token has been cleared')
+            else:
+                ctx.logger.error('Unable to clear token.')
+
     minion_id = ctx.instance.runtime_properties['minion_id']
     start_service()
     authorize_minion(minion_id)
+    append_grains(minion_id)
     execute_initial_state(minion_id)
 
 

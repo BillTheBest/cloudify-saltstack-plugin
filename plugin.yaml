@@ -17,3 +17,5 @@ node_types:
             minion_config: {}
             minion_id:
                 default: ''
+            grains:
+                default: {}
