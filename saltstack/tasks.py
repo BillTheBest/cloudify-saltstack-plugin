@@ -36,6 +36,48 @@ _DEFAULT_INSTALLATION_SCRIPT_PATH = 'utility/default_minion_installation.sh'
 _YAML_LOADER = yaml.SafeLoader
 _YAML_DUMPER = yaml.SafeDumper
 
+def validate_context(context):
+
+    def check_dict(Dict, dictname, required={}, optional={}):
+        def check_key(key, Type, required):
+            if required and key not in Dict:
+                raise NonRecoverableError(
+                    'Invalid configuration: "{0}" should contain key "{1}"'
+                    .format(dictname, key)
+                )
+            if key in Dict and not isinstance(Dict[key], Type):
+                raise NonRecoverableError(
+                    'Invalid configuration: Key "{0}" from "{1}" should be '
+                    'of type {3}'.format(key, dictname, Type)
+                )
+        for key, Type in required.iteritems():
+            check_key(key, Type, True)
+        for key, Type in optional.iteritems():
+            check_key(key, Type, False)
+
+    check_dict(
+        context, 'properties',
+        required={'master_ssh_user': basestring,
+                  'master_private_ssh_key': basestring,
+                  'salt_api_url': basestring},
+        optional={'minion_config': dict,
+                  'salt_api_auth_data': dict,
+                  'logger_injection': dict}
+    )
+
+    if 'salt_api_auth_data' in context:
+        check_dict(
+            context['salt_api_auth_data'], 'salt_api_auth_data',
+            required={'eauth': basestring}
+        )
+
+    if 'logger_injection' in context:
+        check_dict(
+            context['logger_injection'], 'logger_injection',
+            required={'level': basestring},
+            optional={'show_auth': basestring}
+        )
+
 
 def _instantiate_manager():
     api_url = ctx.node.properties['salt_api_url']
@@ -44,7 +86,7 @@ def _instantiate_manager():
     session_options = ctx.node.properties.get('session_options', None)
     logger_injection = ctx.node.properties.get('logger_injection', None)
 
-    # UGH. we want to use none values inside yaml, but we cannot,
+    # UGH. we want to use 'None' default values inside yaml, but we cannot,
     # so we have to use empty strings there and convert them here.
     if not auth_data:
         auth_data = None
@@ -54,6 +96,7 @@ def _instantiate_manager():
         session_options = None
     if not logger_injection:
         logger_injection = None
+    # END UGH.
 
     if logger_injection is not None:
         injected_logger = ctx.logger
@@ -65,30 +108,35 @@ def _instantiate_manager():
         injected_logger_show_auth = None
 
     return saltapimgr.SaltRESTManager(
-            api_url,
-            auth_data=auth_data,
-            token=token,
-            session_options=session_options,
-            root_logger=injected_logger,
-            log_level=injected_logger_level,
-            show_auth_data=injected_logger_show_auth
-        )
+        api_url,
+        auth_data=auth_data,
+        token=token,
+        session_options=session_options,
+        root_logger=injected_logger,
+        log_level=injected_logger_level,
+        show_auth_data=injected_logger_show_auth
+    )
 
 
 @operation
 def install_minion(*args, **kwargs):
+    validate_context(ctx.node.properties)
+
     def do_install_minion():
         command = get_installation_script()
+        ctx.logger.info('Installing Salt minion using {0}'.format(command))
         try:
-            logs = subprocess.check_output(
+            output = subprocess.check_output(
                 command,
                 stderr=subprocess.STDOUT,
                 shell=True
             )
         except subprocess.CalledProcessError as e:
-            report_error(command, 'exited abnormally', e.output)
+            ctx.logger.error(format_output(command, e.output))
+            raise NonRecoverableError('Failed to install Salt minion.')
         else:
-            verify_installation(logs)
+            ctx.logger.debug(format_output(command, output))
+            verify_installation()
 
     def get_installation_script():
         command = ctx.node.properties.get('minion_installation_script', None)
@@ -98,30 +146,26 @@ def install_minion(*args, **kwargs):
             raise NonRecoverableError(
                 'Installation script {0} does not exist'.format(command)
             )
-        ctx.logger.info('Installing salt minion using {0}'.format(command))
         return command
 
     def get_default_installation_script():
-        ctx.logger.info('Installation script not provided, using default.')
+        ctx.logger.debug('Installation script not provided, using default.')
         return os.path.join(
             os.path.dirname(__file__),
             *_DEFAULT_INSTALLATION_SCRIPT_PATH.split('/')
         )
 
-    def report_error(command, descr, logs):
-        msg_header = '{0} {1}. Command output:\n'.format(command, descr)
-        msg_footer = '---END OF OUTPUT FROM {0}---\n'.format(command)
-        ctx.logger.error('{0}{1}{2}'.format(msg_header, logs, msg_footer))
-        raise NonRecoverableError("Failed to install salt minion.")
+    def format_output(command, output):
+        msg_header = '{0} output:'.format(command)
+        msg_footer = '---END OF OUTPUT FROM {0}---'.format(command)
+        return '{0}\n{1}\n{2}'.format(msg_header, output, msg_footer)
 
-    def verify_installation(logs):
+    def verify_installation():
         try:
             subprocess.call(['salt-minion', '--version'])
         except OSError:
-            report_error(
-                command,
-                'ran successfully, but salt minion was not installed',
-                logs
+            raise NonRecoverableError(
+                'Script ran successfully, but Salt minion was not installed.'
             )
         else:
             ctx.logger.info('Salt minion installed successfully.')
@@ -136,25 +180,45 @@ def install_minion(*args, **kwargs):
 
 @operation
 def configure_minion(*args, **kwargs):
+    validate_context(ctx.node.properties)
 
     def load_minion_config(path=_DEFAULT_MINION_CONFIG_PATH):
-        ctx.logger.info('Loading minion config from {0}'.format(path))
-        with open(path, 'r') as f:
-            config = yaml.load(f.read(), Loader=_YAML_LOADER)
-            if config:
-                return config
-            else:
-                return {}
+        ctx.logger.debug('Loading minion configuration from {0}'.format(path))
+        try:
+            with open(path, 'r') as f:
+                config = yaml.load(f.read(), Loader=_YAML_LOADER)
+                if config:
+                    return config
+                else:
+                    return {}
+        except OSError:
+            ctx.logger.warn(
+                'Minion configuration file {0} does not exist. '
+                'Assuming empty configuration.'.format(path)
+            )
+            return {}
 
     def write_to_protected_file(data, path):
         p = subprocess.Popen(
             ['sudo', 'tee', path],
             stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT
         )
-        p.communicate(input=data)
+        output = p.communicate(input=data)
+        message = 'sudo tee {0} output:\n{1}'.format(path, output)
+
+        p.wait()
+        if p.returncode != 0:
+            ctx.logger.error(message)
+            raise RecoverableError(
+                'Failed to write to file {0}.'.format(path)
+            )
+        else:
+            ctx.logger.debug(message)
 
     def save_minion_config(config, path=_DEFAULT_MINION_CONFIG_PATH):
+        ctx.logger.debug('Writing minion configuration to {0}'.format(path))
         data = yaml.dump(
             config,
             default_flow_style=False,
@@ -163,6 +227,7 @@ def configure_minion(*args, **kwargs):
         write_to_protected_file(data, path)
 
     def save_minion_id(minion_id, path=_DEFAULT_MINION_ID_PATH):
+        ctx.logger.debug('Writing minion id to {0}'.format(path))
         write_to_protected_file(minion_id, path)
 
     ctx.logger.info('Updating minion configuration with blueprint data...')
@@ -178,13 +243,14 @@ def configure_minion(*args, **kwargs):
     save_minion_id(minion_id)
     ctx.instance.runtime_properties['minion_id'] = minion_id
 
-    ctx.logger.info('Updated configuration config.')
-
+    ctx.logger.info('Minion configuration updated successfully.')
 
 # TODO: this operation does three different things, can we split it some way
 # or give it a different name?
 @operation
 def start_minion(*args, **kwargs):
+    validate_context(ctx.node.properties)
+
     def start_service():
         ctx.logger.info('Starting salt minion')
         subprocess.call(['sudo', 'service', 'salt-minion', 'start'])
@@ -204,7 +270,7 @@ def start_minion(*args, **kwargs):
                 sleep 2
             done
             sudo salt-key --list=accepted | tail -n +2 | grep {0}
-            if [ $? -eq 0 ]; then exit 0; else exit 1; fi
+            if [ $? -eq 0 ]; then exit 0; else exit 254; fi
             """.format(minion_id)
 
             return [
@@ -218,10 +284,28 @@ def start_minion(*args, **kwargs):
 
         ctx.logger.info('Authorizing {0}...'.format(minion_id))
         try:
-            subprocess.check_call(get_auth_command(minion_id))
+            output = subprocess.check_output(
+                get_auth_command(minion_id),
+                stderr=subprocess.STDOUT
+            )
         except subprocess.CalledProcessError as e:
-            raise NonRecoverableError('{0} authorization failed.'.format(minion_id))
+            ctx.logger.error('Minion authorization command output:\n'
+                             '{0}'.format(e.output))
+            if e.returncode == 255:
+                raise NonRecoverableError('Unable to SSH into Salt master.')
+            elif e.returncode == 254:
+                raise NonRecoverableError(
+                    'Minion {0} did not report to Salt master '
+                    'and cannot be authorized.'.format(minion_id)
+                )
+            else:
+                raise NonRecoverableError(
+                    'Minion {0} authorization exited with '
+                    'return code {1}.'.format(minion_id, e.returncode)
+                )
         else:
+            ctx.logger.debug('Minion authorization command output:\n'
+                             '{0}'.format(output))
             ctx.logger.info('{0} authorization successful.'.format(minion_id))
 
     def execute_initial_state(minion_id):
@@ -244,23 +328,21 @@ def start_minion(*args, **kwargs):
             raise RecoverableError('{0} does not respond.'.format(minion_id))
 
         ctx.logger.info(
-                'Executing highstate on minion {0}...'.format(minion_id)
-            )
+            'Executing highstate on minion {0}...'.format(minion_id)
+        )
         resp, result = mgr.highstate(minion_id)
         if not resp.ok:
             ctx.logger.error('Got response {0}'.format(resp))
             raise NonRecoverableError(
-                    'Unable to execute highstate on minion {0}.'.format(
-                            minion_id
-                        )
-                )
-        ctx.logger.info('Highstate executed on minion {0}.'.format(minion_id))
+                'Unable to execute highstate on minion {0}.'.format(minion_id)
+            )
+        ctx.logger.info('Executed highstate on minion {0}.'.format(minion_id))
 
         resp, result = mgr.log_out()
         if resp.ok:
-            ctx.logger.info('Token has been cleared')
+            ctx.logger.debug('Token has been cleared')
         else:
-            ctx.logger.error('Unable to clear token.')
+            ctx.logger.warn('Unable to clear token.')
 
     def append_grains(minion_id):
         # grains = a list of pairs
@@ -298,5 +380,7 @@ def start_minion(*args, **kwargs):
 
 @operation
 def stop_minion(*args, **kwargs):
-    ctx.logger.info('Nothing to do.  We do not stop salt-minion service because')
-    ctx.logger.info('there may be multiple minions running on the same machine.')
+    validate_context(ctx.node.properties)
+    ctx.logger.info('Nothing to do.  We do not stop salt-minion service '
+                    'because there may be multiple minions running on '
+                    'the same machine.')
