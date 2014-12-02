@@ -24,18 +24,18 @@ ubuntu_installation() {
     # cloudify box doesn't have add-apt-repository command available by default
     which add-apt-repository 1>/dev/null 2>&1 || {
         sudo apt-get update || exit 1
-        sudo apt-get --yes install python-software-properties || exit 1
+        sudo apt-get --yes --no-install-recommends install python-software-properties || exit 1
     }
 
     # install salt
     sudo add-apt-repository --yes ppa:saltstack/salt || exit 1
     sudo apt-get update || exit 1
-    sudo apt-get --yes install salt-minion || exit 1
+    sudo apt-get --yes --no-install-recommends install salt-minion || exit 1
 
     # on Ubuntu salt-minion service is started automatically after apt-get
     # installation, but we have to change configuration afterwards
     # (which would require restart)
-    sudo service salt-minion stop
+    sudo service salt-minion stop || true
 }
 
 
@@ -86,3 +86,6 @@ case "${OS_TYPE}" in
     ubuntu) ubuntu_installation ;;
     centos|redhat) centos_or_redhat_installation ;;
 esac
+
+sudo mkdir -p /etc/salt
+sudo touch /etc/salt/minion

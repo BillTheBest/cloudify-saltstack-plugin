@@ -46,6 +46,9 @@ class SaltRESTManager(object):
         * clear_token - clears a token, without closing an open session,
         * log_out - closes an open session,
         * logged_in - checks if a session is open,
+        * ping - a `call' wrapper for the `test.ping' function,
+        * highstate - a `call' wrapper for the `state.highstate'
+                function,
         * append_grain - appends a given grain,
         * list_grains - lists all currently used grains.
 
@@ -336,20 +339,16 @@ class SaltRESTManager(object):
                 or action == SaltRESTManager.INTERPRET_AS_COLLECTION):
             single = False
             log.debug(self.logger, 'call: transforming collection into a list')
-            commands = utils.collection_translation(
-                    func,
-                    self.logger,
-                    use_yaml
-                )
         else:
             single = True
-            log.debug(
-                    self.logger,
-                    'call: calling \'{0}\''.format(
-                            str(func).strip()
-                        )
-                )
-            commands = utils.command_translation(func, use_yaml)
+            log.debug(self.logger, 'call: wrapping function in a list')
+            func = [func]
+
+        commands = utils.collection_translation(
+            func,
+            self.logger,
+            use_yaml
+        )
         response, result = utils.send_command_request(
                 self._session,
                 self._api_url,
@@ -381,12 +380,19 @@ class SaltRESTManager(object):
                 )
         return response, result
 
+    def ping(self, target):
+        '''Pings the given target(s). -> (requests.Response, result)'''
+        return self.call(
+                {'tgt': target, 'fun': 'test.ping'},
+                use_yaml=True
+            )
+
     def highstate(self, target):
         '''Executes `highstate' on given target.
         -> (requests.Response, result)
         '''
         return self.call(
-                {'tgt': target, 'fun': 'salt.highstate'},
+                {'tgt': target, 'fun': 'state.highstate'},
                 use_yaml=True
             )
 

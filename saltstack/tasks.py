@@ -33,6 +33,46 @@ import saltapimgr
 _DEFAULT_MINION_ID_PATH = '/etc/salt/minion_id'
 _DEFAULT_MINION_CONFIG_PATH = '/etc/salt/minion'
 _DEFAULT_INSTALLATION_SCRIPT_PATH = 'utility/default_minion_installation.sh'
+_YAML_LOADER = yaml.SafeLoader
+_YAML_DUMPER = yaml.SafeDumper
+
+
+def _instantiate_manager():
+    api_url = ctx.node.properties['salt_api_url']
+    auth_data = ctx.node.properties.get('salt_api_auth_data', None)
+    token = ctx.node.properties.get('token', None)
+    session_options = ctx.node.properties.get('session_options', None)
+    logger_injection = ctx.node.properties.get('logger_injection', None)
+
+    # UGH. we want to use none values inside yaml, but we cannot,
+    # so we have to use empty strings there and convert them here.
+    if not auth_data:
+        auth_data = None
+    if not token:
+        token = None
+    if not session_options:
+        session_options = None
+    if not logger_injection:
+        logger_injection = None
+
+    if logger_injection is not None:
+        injected_logger = ctx.logger
+        injected_logger_level = logger_injection.get('level', None)
+        injected_logger_show_auth = logger_injection.get('show_auth', None)
+    else:
+        injected_logger = None
+        injected_logger_level = None
+        injected_logger_show_auth = None
+
+    return saltapimgr.SaltRESTManager(
+            api_url,
+            auth_data=auth_data,
+            token=token,
+            session_options=session_options,
+            root_logger=injected_logger,
+            log_level=injected_logger_level,
+            show_auth_data=injected_logger_show_auth
+        )
 
 
 @operation
@@ -51,7 +91,7 @@ def install_minion(*args, **kwargs):
             verify_installation(logs)
 
     def get_installation_script():
-        command = ctx.node.properties['minion_installation_script']
+        command = ctx.node.properties.get('minion_installation_script', None)
         if not command:
             command = get_default_installation_script()
         elif not os.path.isfile(command):
@@ -97,22 +137,22 @@ def install_minion(*args, **kwargs):
 @operation
 def configure_minion(*args, **kwargs):
 
-    def load_minion_config(path=DEFAULT_CONFIG_PATH):
+    def load_minion_config(path=_DEFAULT_MINION_CONFIG_PATH):
         ctx.logger.info('Loading minion config from {0}'.format(path))
         with open(path, 'r') as f:
-            config = yaml.load(f.read(), Loader=yaml.SafeLoader)
+            config = yaml.load(f.read(), Loader=_YAML_LOADER)
             if config:
                 return config
             else:
                 return {}
 
-    def save_and_replace_file(data, path=_DEFAULT_MINION_CONFIG_PATH):
-        # TODO: find an elegant way to do this, without temp file juggling.
-        temp_file = '/tmp/cfy-temp-file'
-        with open(temp_file, 'w+') as f:
-            f.write(data)
-        subprocess.call(['sudo', 'cp', '--remove-destination', temp_file, path])
-        subprocess.call(['rm', temp_file])
+    def write_to_protected_file(data, path):
+        p = subprocess.Popen(
+            ['sudo', 'tee', path],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE
+        )
+        p.communicate(input=data)
 
     def save_minion_config(config, path=_DEFAULT_MINION_CONFIG_PATH):
         data = yaml.dump(
@@ -120,10 +160,10 @@ def configure_minion(*args, **kwargs):
             default_flow_style=False,
             Dumper=_YAML_DUMPER
         )
-        save_and_replace_file(data, path)
+        write_to_protected_file(data, path)
 
     def save_minion_id(minion_id, path=_DEFAULT_MINION_ID_PATH):
-        save_and_replace_file(minion_id, path)
+        write_to_protected_file(minion_id, path)
 
     ctx.logger.info('Updating minion configuration with blueprint data...')
 
@@ -139,6 +179,7 @@ def configure_minion(*args, **kwargs):
     ctx.instance.runtime_properties['minion_id'] = minion_id
 
     ctx.logger.info('Updated configuration config.')
+
 
 # TODO: this operation does three different things, can we split it some way
 # or give it a different name?
@@ -184,52 +225,50 @@ def start_minion(*args, **kwargs):
             ctx.logger.info('{0} authorization successful.'.format(minion_id))
 
     def execute_initial_state(minion_id):
-        host = ctx.node.properties['minion_config']['master']
-        port = ctx.node.properties['salt_api_port']
-        user = ctx.node.properties['master_ssh_user']
-        salt_api_url = 'http://{0}:{1}'.format(host, port)
-        auth_data = {'eauth': 'pam', 'username': user, 'password': 'vagrant'}
-        mgr = saltapimgr.SaltRESTManager(salt_api_url, auth_data)
+        mgr = _instantiate_manager()
 
-        ctx.logger.info('Connecting with Salt API')
+        ctx.logger.info('Connecting to Salt API...')
         resp, result = mgr.log_in()
         if not resp.ok:
             ctx.logger.error('Got response {0}'.format(resp))
-            ctx.logger.error('Result: {0}'.format(result))
             raise NonRecoverableError('Unable to connect with Salt API.')
+        ctx.logger.info('Connected to Salt API.')
 
-        ping_minion = {'client': 'local', 'tgt': minion_id, 'fun': 'test.ping'}
-        for i in xrange(10):
+        ctx.logger.info('Pinging minion {0}...'.format(minion_id))
+        for i in xrange(15):
             time.sleep(2)
-            resp, result = mgr.call(ping_minion)
-            if resp.ok and minion_id in result[0]:
+            resp, result = mgr.ping(minion_id)
+            if resp.ok and minion_id in result:
                 break
         else:
             raise RecoverableError('{0} does not respond.'.format(minion_id))
 
-        ctx.logger.info('Executing highstate on {0}'.format(minion_id))
+        ctx.logger.info(
+                'Executing highstate on minion {0}...'.format(minion_id)
+            )
         resp, result = mgr.highstate(minion_id)
         if not resp.ok:
             ctx.logger.error('Got response {0}'.format(resp))
-            ctx.logger.error('Result: {0}'.format(result))
-            raise NonRecoverableError('Unable to execute highstate.')
+            raise NonRecoverableError(
+                    'Unable to execute highstate on minion {0}.'.format(
+                            minion_id
+                        )
+                )
+        ctx.logger.info('Highstate executed on minion {0}.'.format(minion_id))
 
-        ctx.logger.info('Disconnecting from Salt API')
         resp, result = mgr.log_out()
-        if not resp.ok:
-            raise NonRecoverableError('Unable to disconnect from Salt API.')
+        if resp.ok:
+            ctx.logger.info('Token has been cleared')
+        else:
+            ctx.logger.error('Unable to clear token.')
 
     def append_grains(minion_id):
         # grains = a list of pairs
         grains = ctx.node.properties.get('grains', [])
         if grains:
-            host = ctx.node.properties['minion_config']['master']
-            port = ctx.node.properties['salt_api_port']
-            salt_api_url = 'http://{0}:{1}'.format(host, port)
-            auth_data = {'eauth': 'pam', 'username': user, 'password': 'vagrant'}
-            mgr = saltapimgr.SaltRESTManager(salt_api_url, auth_data)
+            mgr = _instantiate_manager()
             mgr.log_in()
-            mgr.call({'client': 'local', 'tgt': minion_id, 'fun': 'test.ping'})
+            mgr.ping(minion_id)
             added_grains = []
             for i in grains:
                 grain = i.keys()[0]
@@ -241,7 +280,7 @@ def start_minion(*args, **kwargs):
             response, result = mgr.list_grains(minion_id)
             all_grains = []
             if response.ok:
-                all_grains = result[0][minion_id]
+                all_grains = result[minion_id]
             # TODO: Turn the following into some sort of debug.
             ctx.logger.info('A complete collection of currently used grains grains: {0}.'.format(str(all_grains)))
             resp, result = mgr.log_out()

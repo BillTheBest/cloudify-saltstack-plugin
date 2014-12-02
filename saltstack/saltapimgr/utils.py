@@ -104,13 +104,11 @@ def send_logout_request(session, base_url, token, logger):
     return response, result
 
 
-def command_translation(command, use_yaml):
+def command_translation(command):
     if not command:
         raise exceptions.InvalidArgument(exceptions.NO_COMMAND_SPECIFIED)
     if not command.has_key('client'):
         command['client'] = manager._DEFAULT_CLIENT
-    if use_yaml:
-        command = yaml.dump(command, Dumper = _YAML_DUMPER)
     return command
 
 
@@ -118,11 +116,7 @@ def collection_translation(commands, logger, use_yaml):
     if not commands:
         raise exceptions.InvalidArgument(
                 exceptions.EMPTY_COMMAND_LIST_SPECIFIED)
-    command_list = []
-    for c in commands:
-        if not c:
-            raise exceptions.InvalidArgument(exceptions.NO_COMMAND_SPECIFIED)
-        command_list.append(command_translation(c, False))
+    command_list = [command_translation(c) for c in commands]
     log.debug(
             logger,
             'translation: translated to \'{0}\''.format(

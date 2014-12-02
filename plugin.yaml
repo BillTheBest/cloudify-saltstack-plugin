@@ -4,14 +4,12 @@ imports:
 plugins:
     saltstack:
         executor: host_agent
-        source: http://localhost:8001/plugin.zip
+        source: http://plugin-serving-host:8001/plugin.zip
 
 node_types:
     saltification:
         derived_from: cloudify.nodes.Root
         properties:
-            minion_installation_script: {}
-            salt_api_port: {}
             master_ssh_user: {}
             master_private_ssh_key: {}
             minion_config: {}
@@ -19,3 +17,24 @@ node_types:
                 default: ''
             grains:
                 default: {}
+            salt_api_url: {}
+            minion_installation_script:
+                default: ''
+            logger:
+                default: ''
+            session_options:
+                default: ''
+            logger_injection:
+                default: ''
+            salt_api_auth_data:
+                default: ''
+        interfaces:
+            cloudify.interfaces.lifecycle:
+                create:
+                    implementation: saltstack.saltstack.tasks.install_minion
+                configure:
+                    implementation: saltstack.saltstack.tasks.configure_minion
+                start:
+                    implementation: saltstack.saltstack.tasks.start_minion
+                stop:
+                    implementation: saltstack.saltstack.tasks.stop_minion
