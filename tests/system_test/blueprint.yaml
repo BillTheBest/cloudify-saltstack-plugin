@@ -2,7 +2,7 @@ tosca_definitions_version: cloudify_dsl_1_0
 
 imports:
     -   http://www.getcloudify.org/spec/cloudify/3.1rc1/types.yaml
-    -   http://localhost:8001/plugin.yaml
+    -   http://plugin-serving-host:8001/plugin.yaml
 
 node_templates:
     myhost:
@@ -14,25 +14,26 @@ node_templates:
                 key: /home/vagrant/.ssh/id_rsa
                 wait_started_timeout: 60
 
-    dummy abstraction layer:
+    salt_abstraction_layer:
         type:   saltification
         properties:
-            minion_installation_script: /vagrant/install_minion.sh
             master_ssh_user: vagrant
-            salt_api_port: 8000
             master_private_ssh_key: /home/vagrant/.ssh/id_rsa
             minion_config:
-                master: salt
-                id: fancy_minion
+                master: salt-master
                 log_level_logfile: info
-                grains:
-                    role: jboss
-        interfaces:
-            cloudify.interfaces.lifecycle:
-                create:  saltstack.saltstack.tasks.install_minion
-                configure:  saltstack.saltstack.tasks.configure_minion
-                start:  saltstack.saltstack.tasks.start_minion
-                stop:  saltstack.saltstack.tasks.stop_minion
+            grains:
+                - role: testfile
+                - role: a dummy role
+                - dummy_grain: dummy grain's value
+            salt_api_url: http://salt-master:8000
+            salt_api_auth_data:
+                eauth: pam
+                username: vagrant
+                password: vagrant
+            logger_injection:
+                level: info
+                # show_auth: yes
         relationships:
             -   type:   cloudify.relationships.contained_in
                 target: myhost

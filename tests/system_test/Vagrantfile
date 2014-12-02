@@ -4,6 +4,15 @@
 
 VAGRANTFILE_API_VERSION = "2"
 
+SALT_MASTER_IP = "192.168.51.10"
+CFY_MINION_IP = "192.168.51.11"
+PLUGIN_SERVING_HOST = "10.0.2.2"
+SALT_MASTER_CPUS = 1
+SALT_MASTER_MEMORY = 512
+CFY_MINION_CPUS = 2
+CFY_MINION_MEMORY = 2048
+SWAPPINESS = 5
+
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     config.vm.box_check_update = false
@@ -12,24 +21,25 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         vm.vm.box = "ubuntu/trusty64"
         vm.vm.hostname = "salt-master"
         vm.vm.provider "virtualbox" do |vb|
-            vb.cpus = 1
-            vb.memory = 1024
+            vb.cpus = "#{SALT_MASTER_CPUS}"
+            vb.memory = "#{SALT_MASTER_MEMORY}"
         end
-        vm.vm.network :private_network, ip: "192.168.51.10"
-        vm.vm.provision :shell, inline: "apt-get -y update"
+        vm.vm.network :private_network, ip: "#{SALT_MASTER_IP}"
+        vm.vm.provision :shell, inline: "echo 'vm.swappiness=#{SWAPPINESS}' > /etc/sysctl.d/50-swappiness.conf; echo #{SWAPPINESS} > /proc/sys/vm/swappiness"
         vm.vm.provision :shell, inline: "apt-get -y autoremove chef puppet cloud-init"
         vm.vm.provision :shell, path: "provision_salt_master.sh"
     end
 
-    config.vm.define "cfy-minion" do |vm|
+    config.vm.define "cfy-minion", primary: true do |vm|
         vm.vm.box = "cloudify-3.1.0-rc1"
         vm.vm.hostname = "cfy-minion"
         vm.vm.provider "virtualbox" do |vb|
-            vb.cpus = 2
-            vb.memory = 2048
+            vb.cpus = "#{CFY_MINION_CPUS}"
+            vb.memory = "#{CFY_MINION_MEMORY}"
         end
-        vm.vm.network :private_network, ip: "192.168.51.11"
-        vm.vm.provision :shell, inline: "echo -e '\\n192.168.51.10 salt' | tee -a /etc/hosts"
+        vm.vm.network :private_network, ip: "#{CFY_MINION_IP}"
+        vm.vm.provision :shell, inline: "echo 'vm.swappiness=#{SWAPPINESS}' | tee /etc/sysctl.d/50-swappiness.conf; echo #{SWAPPINESS} > /proc/sys/vm/swappiness"
+        vm.vm.provision :shell, inline: "echo -e '\\n#{PLUGIN_SERVING_HOST} plugin-serving-host\\n#{SALT_MASTER_IP} salt-master' | tee -a /etc/hosts"
         vm.vm.provision "shell", privileged: false, inline: "echo '{\n    \"host_ip\": \"localhost\",\n    \"agent_user\": \"vagrant\",\n    \"agent_private_key_path\": \"/home/vagrant/.ssh/id_rsa\"\n}' > ~/cloudify/inputs.json"
     end
 
