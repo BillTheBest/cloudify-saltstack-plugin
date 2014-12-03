@@ -31,10 +31,10 @@ node_types:
         interfaces:
             cloudify.interfaces.lifecycle:
                 create:
-                    implementation: saltstack.saltstack.tasks.install_minion
+                    implementation: saltstack.main.install_minion.run
                 configure:
-                    implementation: saltstack.saltstack.tasks.configure_minion
+                    implementation: saltstack.main.configure_minion.run
                 start:
-                    implementation: saltstack.saltstack.tasks.start_minion
+                    implementation: saltstack.main.start_minion.run
                 stop:
-                    implementation: saltstack.saltstack.tasks.stop_minion
+                    implementation: saltstack.main.stop_minion.run
