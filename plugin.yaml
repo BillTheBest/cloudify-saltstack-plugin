@@ -20,8 +20,6 @@ node_types:
             salt_api_url: {}
             minion_installation_script:
                 default: ''
-            logger:
-                default: ''
             session_options:
                 default: ''
             logger_injection:

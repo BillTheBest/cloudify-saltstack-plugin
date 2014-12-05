@@ -44,6 +44,8 @@ centos_or_redhat_installation() {
     link=http://ftp.linux.ncsu.edu/pub/epel/6/i386/epel-release-6-8.noarch.rpm
     sudo rpm --verbose --upgrade "${link}"
     sudo yum --verbose --assumeyes install salt-minion
+    sudo service salt-minion stop || true
+    sudo chmod 644 /etc/salt/minion || true
 }
 
 
