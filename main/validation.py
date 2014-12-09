@@ -19,32 +19,25 @@ from cloudify.exceptions import NonRecoverableError
 def validate_context(context):
 
     def check_dict(Dict, dictname, required={}, optional={}):
-        def check_key(key, Types, required):
+        def check_key(key, types, required):
             if required and key not in Dict:
                 raise NonRecoverableError(
                     'Invalid configuration: "{0}" should contain key "{1}"'
                     .format(dictname, key)
                 )
-            if key in Dict and not isinstance(Dict[key], Types):
-                assert len(Types) > 0
-                if len(Types) == 1:
-                    raise NonRecoverableError(
-                        'Invalid configuration: Key "{0}" from "{1}" should '
-                        'be of type {2}'.format(key, dictname, Types.__name__)
-                    )
+            if key in Dict and not isinstance(Dict[key], types):
+                if isinstance(types, type):
+                    valid_types = types.__name__
                 else:
-                    raise NonRecoverableError(
-                        'Invalid configuration: Key "{0}" from "{1}" should '
-                        'be one of: {2}'.format(
-                            key,
-                            dictname,
-                            ','.join(t.__name__ for t in Types)
-                        )
-                    )
-        for key, Types in required.iteritems():
-            check_key(key, Types, True)
-        for key, Types in optional.iteritems():
-            check_key(key, Types, False)
+                    valid_types = ', '.join(t.__name__ for t in types)
+                raise NonRecoverableError(
+                    'Invalid configuration: wrong type of key "{0}" in "{1}".'
+                    ' Valid type(s): {2}'.format(key, dictname, valid_types)
+                )
+        for key, types in required.iteritems():
+            check_key(key, types, True)
+        for key, types in optional.iteritems():
+            check_key(key, types, False)
 
     check_dict(
         context, 'properties',
@@ -56,15 +49,17 @@ def validate_context(context):
                   'logger_injection': (basestring, dict)}
     )
 
-    if context.get('salt_api_auth_data', '') != '':
+    # We use empty string as a substitute for None, i.e. unset property
+    # (Cloudify doesn't support None values in YAML files yet).
+    if context['salt_api_auth_data'] != '':
         check_dict(
             context['salt_api_auth_data'], 'salt_api_auth_data',
             required={'eauth': basestring}
         )
 
-    if context.get('logger_injection', '') != '':
+    if context['logger_injection'] != '':
         check_dict(
             context['logger_injection'], 'logger_injection',
             optional={'level': basestring,
-                      'show_auth': basestring}
+                      'show_auth': bool}
         )
