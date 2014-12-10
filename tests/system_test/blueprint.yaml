@@ -17,8 +17,6 @@ node_templates:
     salt_abstraction_layer:
         type:   saltification
         properties:
-            master_ssh_user: vagrant
-            master_private_ssh_key: /home/vagrant/.ssh/id_rsa
             minion_config:
                 master: salt-master
                 log_level_logfile: info

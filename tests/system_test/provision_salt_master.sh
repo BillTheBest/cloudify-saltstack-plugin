@@ -24,6 +24,7 @@ external_auth:
     pam:
         vagrant:
             - .*
+            - '@wheel'
 
 file_roots:
     base:
