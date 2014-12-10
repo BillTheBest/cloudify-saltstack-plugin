@@ -1,6 +1,3 @@
-# coding=utf-8
-
-
 ###############################################################################
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -34,7 +31,7 @@ def set_up_logger(root_logger, level = None):
     logger = None
     if root_logger is not None:
         logger = root_logger.getChild(manager._LOGGER_MODULE)
-        if level is not None and isinstance(level, str):
+        if level is not None and isinstance(level, basestring):
             level = level.lower()
             level = _LOG_LEVELS[level]
             logger.setLevel(level)

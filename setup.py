@@ -1,6 +1,3 @@
-# coding=utf-8
-
-
 ###############################################################################
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -18,7 +15,7 @@
 
 import setuptools
 
-import saltstack
+import main
 
 
 _REQUIREMENTS_FILE = 'requirements.txt'
@@ -38,12 +35,12 @@ with open(_REQUIREMENTS_FILE) as f:
 
 
 setuptools.setup(
-        name=saltstack.PLUGIN_NAME,
-        version=saltstack.PLUGIN_VERSION,
-        author=saltstack.PLUGIN_AUTHOR,
-        author_email=saltstack.PLUGIN_EMAIL,
+        name=main.PLUGIN_NAME,
+        version=main.PLUGIN_VERSION,
+        author=main.PLUGIN_AUTHOR,
+        author_email=main.PLUGIN_EMAIL,
         license=_LICENSE,
-        description=saltstack.__doc__,
+        description=main.__doc__,
         dependency_links=[
             'git+https://github.com/cloudify-cosmo/cloudify-rest-client@3.1rc1#egg=cloudify-rest-client==3.1rc1',
             'git+https://github.com/cloudify-cosmo/cloudify-plugins-common@3.1rc1#egg=cloudify-plugins-common==3.1rc1'
