@@ -100,8 +100,13 @@ def validate_context():
         )
 
 
-def instantiate_manager():
-    token = ctx.node.properties.get('token', None)
+def instantiate_manager(reuse_token=True):
+    if reuse_token:
+        token = ctx.instance.runtime_properties.get('token', None)
+        if not token:
+            token = ctx.node.properties.get('token', None)
+    else:
+        token = None
 
     api_url = ctx.node.properties['salt_api_url']
     auth_data = ctx.node.properties.get('salt_api_auth_data', None)
@@ -139,14 +144,16 @@ def instantiate_manager():
         show_auth_data=injected_logger_show_auth
     )
 
-    ctx.logger.info('Connecting to Salt API...')
-    resp, result = mgr.log_in()
-    if resp.ok:
-        ctx.logger.info('Connected to Salt API.')
-        ctx.instance.runtime_properties['token'] = mgr.token
-    else:
-        ctx.logger.error('Got response {0}'.format(resp))
-        raise NonRecoverableError('Unable to connect with Salt API.')
+    mgr.open_session()
+    if not token:
+        ctx.logger.info('Connecting to Salt API...')
+        resp, result = mgr.log_in()
+        if resp.ok:
+            ctx.logger.info('Connected to Salt API.')
+            ctx.instance.runtime_properties['token'] = mgr.token
+        else:
+            ctx.logger.error('Got response {0}'.format(resp))
+            raise NonRecoverableError('Unable to connect with Salt API.')
 
     # Force the process to initiate TCP connection - first request
     # sent through a connection may take a long time and time out,
