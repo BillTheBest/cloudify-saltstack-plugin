@@ -21,10 +21,10 @@ from cloudify.decorators import operation
 from cloudify.exceptions import NonRecoverableError
 from cloudify.exceptions import RecoverableError
 
-from validation import validate_context
+import utils
 
 
-_DEFAULT_INSTALLATION_SCRIPT_PATH = 'utility/default_minion_installation.sh'
+_DEFAULT_INSTALLATION_SCRIPT_PATH = 'scripts/default_minion_installation.sh'
 
 
 def _install_minion():
@@ -82,7 +82,8 @@ def _verify_installation():
 
 @operation
 def run(*args, **kwargs):
-    validate_context(ctx.node.properties)
+    utils.validate_context()
+
     try:
         subprocess.call(['salt-minion', '--version'])
     except OSError:

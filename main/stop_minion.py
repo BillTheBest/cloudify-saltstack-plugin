@@ -16,12 +16,12 @@
 from cloudify import ctx
 from cloudify.decorators import operation
 
-from validation import validate_context
+import utils
 
 
 @operation
 def run(*args, **kwargs):
-    validate_context(ctx.node.properties)
+    utils.validate_context()
     ctx.logger.info('Nothing to do.  We do not stop salt-minion service '
                     'because there may be multiple minions running on '
                     'the same machine.')

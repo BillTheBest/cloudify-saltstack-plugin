@@ -22,7 +22,7 @@ _REQUIREMENTS_FILE = 'requirements.txt'
 _README_FILE = 'README.md'
 _LICENSE_FILE = 'LICENSE'
 _PACKAGE_DATA = {
-        '': ['utility/default_minion_installation.sh']
+        '': ['scripts/default_minion_installation.sh']
     }
 
 
