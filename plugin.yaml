@@ -10,8 +10,6 @@ node_types:
     saltification:
         derived_from: cloudify.nodes.Root
         properties:
-            master_ssh_user: {}
-            master_private_ssh_key: {}
             minion_config: {}
             minion_id:
                 default: ''

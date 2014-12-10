@@ -24,65 +24,10 @@ from cloudify.exceptions import RecoverableError
 
 import saltapimgr
 from validation import validate_context
+import configure_minion
 
 
-def _start_service():
-    ctx.logger.info('Starting salt minion')
-    subprocess.call(['sudo', 'service', 'salt-minion', 'start'])
-
-
-def _authorize_minion(minion_id):
-    def get_auth_command(minion_id):
-        key_file = ctx.node.properties['master_private_ssh_key']
-        user = ctx.node.properties['master_ssh_user']
-        host = ctx.node.properties['minion_config']['master']
-        target = '{0}@{1}'.format(user, host)
-
-        accept_minion_loop = """
-        for i in `seq 1 10`; do
-            sudo salt-key --yes --accept={0}
-            sudo salt-key --list=accepted | tail -n +2 | grep {0}
-            if [ $? -eq 0 ]; then exit 0; fi
-            sleep 2
-        done
-        sudo salt-key --list=accepted | tail -n +2 | grep {0}
-        if [ $? -eq 0 ]; then exit 0; else exit 254; fi
-        """.format(minion_id)
-
-        return [
-            'ssh',
-            '-i', key_file,
-            '-oStrictHostKeyChecking=no',
-            '-oUserKnownHostsFile=/dev/null',
-            target,
-            accept_minion_loop
-        ]
-
-    ctx.logger.info('Authorizing {0}...'.format(minion_id))
-    try:
-        output = subprocess.check_output(
-            get_auth_command(minion_id),
-            stderr=subprocess.STDOUT
-        )
-    except subprocess.CalledProcessError as e:
-        ctx.logger.error('Minion authorization command output:\n'
-                            '{0}'.format(e.output))
-        if e.returncode == 255:
-            raise NonRecoverableError('Unable to SSH into Salt master.')
-        elif e.returncode == 254:
-            raise NonRecoverableError(
-                'Minion {0} did not report to Salt master '
-                'and cannot be authorized.'.format(minion_id)
-            )
-        else:
-            raise NonRecoverableError(
-                'Minion {0} authorization exited with '
-                'return code {1}.'.format(minion_id, e.returncode)
-            )
-    else:
-        ctx.logger.debug('Minion authorization command output:\n'
-                            '{0}'.format(output))
-        ctx.logger.info('{0} authorization successful.'.format(minion_id))
+_DEFAULT_MINION_KEYS_DIR = '/etc/salt/pki/minion/'
 
 
 def _instantiate_manager():
@@ -122,6 +67,57 @@ def _instantiate_manager():
         log_level=injected_logger_level,
         show_auth_data=injected_logger_show_auth
     )
+
+
+def _authorize_minion(minion_id):
+    if _is_authorized(minion_id):
+        ctx.logger.info('Minion {0} is already authorized.'.format(minion_id))
+    else:
+        ctx.logger.info('Generating keys for minion {0}...'.format(minion_id))
+        private, public = _generate_key(minion_id)
+        try:
+            path = _DEFAULT_MINION_KEYS_DIR
+            subprocess.check_output(['sudo', 'mkdir', '-p', path])
+        except subprocess.CalledProcessError as e:
+            raise NonRecoverableError('Cannot create {0} directory: {1}\n'
+                                      .format(path, e.output))
+        configure_minion._write_to_protected_file(private, path + 'minion.pem')
+        configure_minion._write_to_protected_file(public, path + 'minion.pub')
+        ctx.logger.info('Minion {0} authorized.'.format(minion_id))
+
+
+def _is_authorized(minion_id):
+    mgr = _instantiate_manager()
+    mgr.log_in()
+    resp, result = mgr.accepted_minions()
+    if resp.ok:
+        accepted = result['data']['return']['minions']
+        return minion_id in accepted
+    else:
+        ctx.logger.error('Got response {0}'.format(resp))
+        raise NonRecoverableError(
+            'Unable to get accepted minions from Salt API.'
+        )
+
+
+def _generate_key(minion_id):
+    mgr = _instantiate_manager()
+    mgr.log_in()
+    resp, result = mgr.generate_accepted_key(minion_id)
+    if resp.ok:
+        ctx.logger.info('Generated key for minion {0}.'.format(minion_id))
+        keys = result['data']['return']
+        return keys['priv'], keys['pub']
+    else:
+        ctx.logger.error('Got response {0}'.format(resp))
+        raise NonRecoverableError(
+            'Unable to generate key for minion {0}.'.format(minion_id)
+        )
+
+
+def _start_service():
+    ctx.logger.info('Starting salt minion')
+    subprocess.call(['sudo', 'service', 'salt-minion', 'start'])
 
 
 # Conceptually this belongs to configuration, but since we are using
@@ -196,8 +192,8 @@ def _execute_initial_state(minion_id):
 def run(*args, **kwargs):
     validate_context(ctx.node.properties)
     minion_id = ctx.instance.runtime_properties['minion_id']
-    _start_service()
     _authorize_minion(minion_id)
+    _start_service()
     # note that highstate may depend on grains.
     _append_grains(minion_id)
     _execute_initial_state(minion_id)

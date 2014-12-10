@@ -41,9 +41,7 @@ def validate_context(context):
 
     check_dict(
         context, 'properties',
-        required={'master_ssh_user': basestring,
-                  'master_private_ssh_key': basestring,
-                  'salt_api_url': basestring},
+        required={'salt_api_url': basestring},
         optional={'minion_config': dict,
                   'salt_api_auth_data': dict,
                   'logger_injection': (basestring, dict)}

@@ -393,6 +393,24 @@ class SaltRESTManager(object):
                 use_yaml=True
             )
 
+    def generate_accepted_key(self, target):
+        '''Creates a key pair that is automatically accepted on master.
+        -> (requests.Response, result)
+        '''
+        return self.call(
+                {'client': 'wheel', 'fun': 'key.gen_accept', 'id_': target},
+                use_yaml=True
+            )
+
+    def accepted_minions(self):
+        '''Requests a list of all accepted minions.
+        -> (requests.Response, result)
+        '''
+        return self.call(
+                {'client': 'wheel', 'fun': 'key.list', 'match': 'accepted'},
+                use_yaml=True
+            )
+
     def append_grain(self, target, grain, value):
         '''Appends the given grain on all targets.
         -> (requests.Response, result)
