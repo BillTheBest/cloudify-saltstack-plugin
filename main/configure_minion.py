@@ -15,6 +15,7 @@
 
 import subprocess
 import yaml
+import errno
 
 from cloudify import ctx
 from cloudify.decorators import operation
@@ -40,12 +41,17 @@ def _load_minion_config(path=_DEFAULT_MINION_CONFIG_PATH):
                 return config
             else:
                 return {}
-    except OSError:
-        ctx.logger.warn(
-            'Minion configuration file {0} does not exist. '
-            'Assuming empty configuration.'.format(path)
-        )
-        return {}
+    except EnvironmentError as e:
+        if e.errno == errno.ENOENT:
+            ctx.logger.warn(
+                'Minion configuration file {0} does not exist. '
+                'Assuming empty configuration.'.format(path)
+            )
+            return {}
+        else:
+            raise NonRecoverableError(
+                'Error {0}: {1}'.format(e.errno, e.strerror)
+            )
 
 
 def _save_minion_config(config, path=_DEFAULT_MINION_CONFIG_PATH):
