@@ -90,3 +90,6 @@ def run(*args, **kwargs):
         _install_minion()
     else:
         ctx.logger.info('Salt minion is already installed.')
+        # for consistency - salt-minion should always be not running
+        # after installation.
+        subprocess.call(['sudo', 'service', 'salt-minion', 'stop'])

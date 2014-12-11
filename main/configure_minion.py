@@ -117,6 +117,8 @@ def _generate_key(minion_id):
 def run(*args, **kwargs):
     utils.validate_context()
     minion_id = utils.get_minion_id()
+    # ensure that salt-minion service is not running -
+    # updating config while minion is running has no effect.
     subprocess.call(['sudo', 'service', 'salt-minion', 'stop'])
 
     ctx.logger.info('Updating minion configuration with blueprint data...')
