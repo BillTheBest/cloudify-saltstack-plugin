@@ -41,10 +41,6 @@ setuptools.setup(
         author_email=main.PLUGIN_EMAIL,
         license=_LICENSE,
         description=main.__doc__,
-        dependency_links=[
-            'git+https://github.com/cloudify-cosmo/cloudify-rest-client@3.1rc1#egg=cloudify-rest-client==3.1rc1',
-            'git+https://github.com/cloudify-cosmo/cloudify-plugins-common@3.1rc1#egg=cloudify-plugins-common==3.1rc1'
-        ],
         long_description=_README,
         packages=setuptools.find_packages(),
         install_requires=_REQUIREMENTS,
