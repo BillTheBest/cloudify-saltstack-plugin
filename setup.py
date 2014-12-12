@@ -31,7 +31,7 @@ with open(_LICENSE_FILE) as f:
 with open(_README_FILE) as f:
     _README = f.read().strip()
 with open(_REQUIREMENTS_FILE) as f:
-    _REQUIREMENTS = f.read().strip().split()
+    _REQUIREMENTS = f.read().strip().split('\n')
 
 
 setuptools.setup(
