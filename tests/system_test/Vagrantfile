@@ -13,6 +13,8 @@ CFY_MINION_CPUS = 2
 CFY_MINION_MEMORY = 2048
 SWAPPINESS = 5
 
+CFY_BOX = "cloudify-3.1.0-ga-b85"
+
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     config.vm.box_check_update = false
@@ -31,7 +33,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     end
 
     config.vm.define "cfy-minion", primary: true do |vm|
-        vm.vm.box = "cloudify-3.1.0-rc1"
+        vm.vm.box = "#{CFY_BOX}"
         vm.vm.hostname = "cfy-minion"
         vm.vm.provider "virtualbox" do |vb|
             vb.cpus = "#{CFY_MINION_CPUS}"

@@ -7,7 +7,7 @@ TARGET_DIR="/tmp/temp-saltstack-plugin-$$"
 TARGET_YAML=plugin.yaml
 TARGET_ZIP=plugin.zip
 PORT=8001
-TIMEOUT=150
+TIMEOUT=300
 
 
 function _sleep {
