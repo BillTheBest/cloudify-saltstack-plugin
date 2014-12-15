@@ -98,32 +98,16 @@ class SaltRESTManager(object):
 
     def logged_in(self):
         '''Check if a session is open. -> bool'''
-        return self.token is not None and not utils.token_valid(self.token)
+        token_ok = self.token is not None and utils.token_valid(self.token)
+        return token_ok and self._session is not None
 
-    def open_session(self, auth_data = None, session_options = None):
-        '''Open a session.
-
-        If auth data had not been supplied in the constructor,
-        it can be here.
-
-        Arguments:
-            * auth_data = an optional dictionary containing
-                    the authorisation data (explicit auth data has 
-                    a higher priority).
-        '''
+    def open_session(self, session_options = None):
+        '''Ensure that a session is opened.'''
         if self._session:
             return
 
-        if auth_data is not None:
-            self._auth_data = auth_data
         if session_options is not None:
             self._session_options = session_options
-        if self._auth_data is None:
-            log.error(
-                    self.logger,
-                    'log in: missing auth data'
-                )
-            raise exceptions.LogicError(exceptions.NO_AUTH_DATA)
 
         params = {}
         if self._session_options is not None:
@@ -144,7 +128,16 @@ class SaltRESTManager(object):
                     the authorisation data (explicit auth data has
                     a higher priority).
         '''
-        self.open_session(auth_data, session_options)
+        self.open_session(session_options)
+
+        if auth_data is not None:
+            self._auth_data = auth_data
+        if self._auth_data is None:
+            log.error(
+                    self.logger,
+                    'log in: missing auth data'
+                )
+            raise exceptions.LogicError(exceptions.NO_AUTH_DATA)
 
         log.debug(
                 self.logger,
