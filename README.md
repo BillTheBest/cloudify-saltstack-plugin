@@ -53,34 +53,34 @@ The following is a basic working example:
         tosca_definitions_version: cloudify_dsl_1_0
         imports:
             - http://www.getcloudify.org/spec/cloudify/3.1rc1/types.yaml
-            - http://127.0.0.1:8001/plugin.yaml
+            - http://localhost:8001/plugin.yaml
         node_templates:
-            my localhost:
+            my host:
                 type: cloudify.nodes.Compute
                 properties:
-                    ip: 127.0.0.1
+                    ip: localhost
                     cloudify_agent:
                         user: cloudify_user
                         key: /home/cloudify_user/.ssh/id_rsa
-            my salted localhost:
+            my salted host:
                 type: saltification
                 properties:
                     minion_config:
-                        master: 127.0.0.1
-                    salt_api_url: http://127.0.0.1:8000
+                        master: localhost
+                    salt_api_url: http://localhost:8000
                     salt_api_auth_data:
                         eauth: pam
                         username: cloudify_user
                         password: my secret password
                 relationships:
                     -   type: cloudify.relationships.contained_in
-                        target: my localhost
+                        target: my host
 
 
 #### Assumptions for the above example ####
 
 *   Both `plugin.yaml` and `plugin.zip` are served on `localhost:8001`.
-*   Salt master is up and running on *localhost*.
+*   Salt master is up and running on `localhost`.
 *   Salt API is available on `localhost:8000`.
 *   Salt API is configured to work **without _SSL_**.
 *   User `cloudify_user` exists and can be accessed with
@@ -99,7 +99,7 @@ Example Salt master configuration fulfilling the above assumptions:
         external_auth:
             pam:
                 cloudify_user:
-                    - 'my salted localhost*'
+                    - 'my salted host*'
                     - '@wheel'
 
 Plugin easily can be served with Python's SimpleHTTPServer. Run:
