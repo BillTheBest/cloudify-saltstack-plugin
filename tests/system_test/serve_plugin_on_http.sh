@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Compress the plugin code into a zip archive and serve it
+# (together with plugin.yaml) using Python's SimpleHTTPServer
 
 SOURCE_DIR=../../
 SOURCE_YAML=plugin.yaml
@@ -25,9 +27,8 @@ function _cleanup {
             _sleep 0.1
         done
     done
-    set -x
-    rm -v "${target_path}/${TARGET_YAML}" "${target_path}/${TARGET_ZIP}"
-    rmdir -vp "${target_path}" 2>/dev/null
+    rm "${target_path}/${TARGET_YAML}" "${target_path}/${TARGET_ZIP}"
+    rmdir -p "${target_path}" 2>/dev/null
     _pids=()
 }
 
@@ -57,7 +58,7 @@ fi
 
 pushd "${SOURCE_DIR}"
 cp -v "${SOURCE_YAML}" "${target_path}/${TARGET_YAML}"
-zip -r "${target_path}/${TARGET_ZIP}" *
+zip -r --quiet "${target_path}/${TARGET_ZIP}" *
 popd
 
 pushd "${TARGET_DIR}"
