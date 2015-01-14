@@ -82,7 +82,7 @@ def _verify_installation():
 
 @operation
 def run(*args, **kwargs):
-    utils.validate_context()
+    utils.validate_properties(ctx.node.properties)
 
     try:
         subprocess.call(['salt-minion', '--version'])

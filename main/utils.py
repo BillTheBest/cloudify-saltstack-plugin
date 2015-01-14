@@ -52,8 +52,7 @@ def write_protected_file(data, path):
         ctx.logger.debug(message)
 
 
-def validate_context():
-    props = ctx.node.properties
+def validate_properties(props):
 
     def check_dict(Dict, dictname, required={}, optional={}):
         def check_key(key, types, required):

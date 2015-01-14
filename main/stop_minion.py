@@ -21,7 +21,7 @@ import utils
 
 @operation
 def run(*args, **kwargs):
-    utils.validate_context()
+    utils.validate_properties(ctx.node.properties)
     ctx.logger.info('Nothing to do.  We do not stop salt-minion service '
                     'because there may be multiple minions running on '
                     'the same machine.')

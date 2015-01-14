@@ -72,18 +72,19 @@ def _save_minion_id(minion_id, path=_DEFAULT_MINION_ID_PATH):
 def _authorize_minion(minion_id):
     if _is_authorized(minion_id):
         ctx.logger.info('Minion {0} is already authorized.'.format(minion_id))
-    else:
-        ctx.logger.info('Generating keys for minion {0}...'.format(minion_id))
-        private, public = _generate_key(minion_id)
-        try:
-            path = _DEFAULT_MINION_KEYS_DIR
-            subprocess.check_output(['sudo', 'mkdir', '-p', path])
-        except subprocess.CalledProcessError as e:
-            raise NonRecoverableError('Cannot create {0} directory: {1}\n'
-                                      .format(path, e.output))
-        utils.write_protected_file(private, path + 'minion.pem')
-        utils.write_protected_file(public, path + 'minion.pub')
-        ctx.logger.info('Minion {0} authorized.'.format(minion_id))
+        return
+
+    ctx.logger.info('Generating keys for minion {0}...'.format(minion_id))
+    private, public = _generate_key(minion_id)
+    path = _DEFAULT_MINION_KEYS_DIR
+    try:
+        subprocess.check_output(['sudo', 'mkdir', '-p', path])
+    except subprocess.CalledProcessError as e:
+        raise NonRecoverableError('Cannot create {0} directory: {1}'
+                                  .format(path, e.output))
+    utils.write_protected_file(private, path + 'minion.pem')
+    utils.write_protected_file(public, path + 'minion.pub')
+    ctx.logger.info('Minion {0} has been authorized.'.format(minion_id))
 
 
 def _is_authorized(minion_id):
@@ -115,7 +116,7 @@ def _generate_key(minion_id):
 
 @operation
 def run(*args, **kwargs):
-    utils.validate_context()
+    utils.validate_properties(ctx.node.properties)
     minion_id = utils.get_minion_id()
     # ensure that salt-minion service is not running -
     # updating config while minion is running has no effect.
