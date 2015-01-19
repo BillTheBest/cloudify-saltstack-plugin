@@ -225,7 +225,7 @@ class SaltRESTManager(object):
             ERR_MSG = 'clear token: the token is still valid'
             if validation == SaltRESTManager.THROW:
                 log.error(self.logger, ERR_MSG)
-                raise exception.LogicError(exception.TOKEN_IS_STILL_VALID)
+                raise exceptions.LogicError(exceptions.TOKEN_IS_STILL_VALID)
             else:
                 log.warning(self.logger, ERR_MSG)
         self.token = None
