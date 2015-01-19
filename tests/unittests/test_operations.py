@@ -71,7 +71,3 @@ class TestOperations(unittest.TestCase):
         current_ctx.set(ctx)
         self.assertRaises(NonRecoverableError,
                           install_minion._install_minion)
-
-
-if __name__ == '__main__':
-    unittest.main()

@@ -118,7 +118,3 @@ class TestUtils(unittest.TestCase):
                              node_name='node_name',
                              properties=properties)
         self.assertRaises(LogicError, utils.instantiate_manager, False)
-
-
-if __name__ == '__main__':
-    unittest.main()

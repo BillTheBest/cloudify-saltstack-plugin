@@ -73,7 +73,3 @@ class TestSaltapimgrUtils(unittest.TestCase):
         now = time.time()
         test_token = {'start': now + 2000, 'expire': now - 3000}
         self.assertFalse(utils.token_valid(test_token))
-
-
-if __name__ == '__main__':
-    unittest.main()
