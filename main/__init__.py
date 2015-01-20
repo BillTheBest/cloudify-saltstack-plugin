@@ -16,7 +16,7 @@
 ###############################################################################
 
 
-'''...'''
+'''A plugin that adds salt layer to a Cloudify agent.'''
 
 
 PLUGIN_NAME = 'saltstack-plugin'

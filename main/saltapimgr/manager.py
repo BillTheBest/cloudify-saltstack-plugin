@@ -100,10 +100,8 @@ class SaltRESTManager(object):
         '''Check if a session is open. -> bool'''
         return self.token is not None and not utils.token_valid(self.token)
 
-    def log_in(self, auth_data = None, session_options = None):
-        '''Open a session. -> (requests.Response, result)
-
-        `result' is a parsed output data structure.
+    def open_session(self, auth_data = None, session_options = None):
+        '''Open a session.
 
         If auth data had not been supplied in the constructor,
         it can be here.
@@ -113,6 +111,9 @@ class SaltRESTManager(object):
                     the authorisation data (explicit auth data has 
                     a higher priority).
         '''
+        if self._session:
+            return
+
         if auth_data is not None:
             self._auth_data = auth_data
         if session_options is not None:
@@ -123,11 +124,28 @@ class SaltRESTManager(object):
                     'log in: missing auth data'
                 )
             raise exceptions.LogicError(exceptions.NO_AUTH_DATA)
-        if self._session is None:
-            params = {}
-            if self._session_options is not None:
-                params = self._session_options
-            self._session = requests.Session(**params)
+
+        params = {}
+        if self._session_options is not None:
+            params = self._session_options
+        self._session = requests.Session(**params)
+
+    def log_in(self, auth_data = None, session_options = None):
+        '''Open a session and get a token from Salt API
+        -> (requests.Response, result)
+
+        `result' is a parsed output data structure.
+
+        If auth data had not been supplied in the constructor,
+        it can be here.
+
+        Arguments:
+            * auth_data = an optional dictionary containing
+                    the authorisation data (explicit auth data has
+                    a higher priority).
+        '''
+        self.open_session(auth_data, session_options)
+
         log.debug(
                 self.logger,
                 'log in: logging in with auth data = {0}'
@@ -191,7 +209,7 @@ class SaltRESTManager(object):
                 log.warning(self.logger, ERR_MSG)
         self.auth_data = None
 
-    def clear_token(self, validation = THROW):
+    def clear_token(self, validation = SILENTLY_IGNORE):
         '''Clears the token without invalidating it.
 
         If `SILENTLY_IGNORE' has been specified, the token will be always
@@ -200,8 +218,8 @@ class SaltRESTManager(object):
         Arguments:
             * validation = if the function should raise an exception,
                     when there is no session to close, can be one of:
-                ** THROW (default),
-                ** SILENTLY_IGNORE.
+                ** THROW,
+                ** SILENTLY_IGNORE (default).
         '''
         if self.token is None:
             ERR_MSG = 'clear token: token not set'
@@ -210,7 +228,6 @@ class SaltRESTManager(object):
                 raise exceptions.LogicError(exceptions.NO_TOKEN_TO_CLEAR)
             else:
                 log.warning(self.logger, ERR_MSG)
-                return
         elif utils.token_valid(self.token):
             ERR_MSG = 'clear token: the token is still valid'
             if validation == SaltRESTManager.THROW:
@@ -223,7 +240,7 @@ class SaltRESTManager(object):
             self._session.close()
             self._session = None
 
-    def log_out(self, validation = THROW):
+    def log_out(self, validation = SILENTLY_IGNORE):
         '''Close the session, if it was open. -> (requests.Response, result)
         or None
 
@@ -232,8 +249,8 @@ class SaltRESTManager(object):
         Arguments:
             * validation = if the function should raise an exception,
                     when there is no session to close, can be one of:
-                ** THROW (default),
-                ** SILENTLY_IGNORE.
+                ** THROW,
+                ** SILENTLY_IGNORE (default).
         '''
         try:
             if self.token is None:
@@ -249,7 +266,6 @@ class SaltRESTManager(object):
                 raise
             else:
                 log.warning(self.logger, ERR_MSG)
-                return None, None
         log.debug(
                 self.logger,
                 'log out: invalidating token \'{0}\''.format(
@@ -390,6 +406,24 @@ class SaltRESTManager(object):
         '''
         return self.call(
                 {'tgt': target, 'fun': 'state.highstate'},
+                use_yaml=True
+            )
+
+    def generate_accepted_key(self, target):
+        '''Creates a key pair that is automatically accepted on master.
+        -> (requests.Response, result)
+        '''
+        return self.call(
+                {'client': 'wheel', 'fun': 'key.gen_accept', 'id_': target},
+                use_yaml=True
+            )
+
+    def accepted_minions(self):
+        '''Requests a list of all accepted minions.
+        -> (requests.Response, result)
+        '''
+        return self.call(
+                {'client': 'wheel', 'fun': 'key.list', 'match': 'accepted'},
                 use_yaml=True
             )
 
