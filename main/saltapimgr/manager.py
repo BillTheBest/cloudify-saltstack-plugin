@@ -225,7 +225,7 @@ class SaltRESTManager(object):
             ERR_MSG = 'clear token: the token is still valid'
             if validation == SaltRESTManager.THROW:
                 log.error(self.logger, ERR_MSG)
-                raise exception.LogicError(exception.TOKEN_IS_STILL_VALID)
+                raise exceptions.LogicError(exceptions.TOKEN_IS_STILL_VALID)
             else:
                 log.warning(self.logger, ERR_MSG)
         self.token = None
@@ -251,7 +251,6 @@ class SaltRESTManager(object):
                 raise exceptions.LogicError(exceptions.NO_TOKEN_TO_CLEAR)
             elif not utils.token_valid(self.token):
                 ERR_MSG = 'log out: the token has already expired'
-                self.token = None
                 raise exceptions.LogicError(exceptions.TOKEN_HAS_EXPIRED)
         except exceptions.LogicError:
             if validation == SaltRESTManager.THROW:

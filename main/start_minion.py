@@ -71,7 +71,7 @@ def _execute_highstate(minion_id):
 
 @operation
 def run(*args, **kwargs):
-    utils.validate_context()
+    utils.validate_properties(ctx.node.properties)
     minion_id = utils.get_minion_id()
 
     _start_service()

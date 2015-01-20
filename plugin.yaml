@@ -10,7 +10,8 @@ node_types:
     saltification:
         derived_from: cloudify.nodes.Root
         properties:
-            minion_config: {}
+            minion_config:
+                default: {}
             minion_id:
                 default: ''
             grains:
@@ -23,7 +24,7 @@ node_types:
             logger_injection:
                 default: ''
             salt_api_auth_data:
-                default: ''
+                default: {}
         interfaces:
             cloudify.interfaces.lifecycle:
                 create:
