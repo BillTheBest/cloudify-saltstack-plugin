@@ -1,0 +1,4 @@
+*.pem
+*.pyc
+.vagrant/
+temp_dir

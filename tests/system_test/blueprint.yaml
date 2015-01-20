@@ -1,0 +1,37 @@
+tosca_definitions_version: cloudify_dsl_1_0
+
+imports:
+    -   http://www.getcloudify.org/spec/cloudify/3.1rc1/types.yaml
+    -   http://plugin-serving-host:8001/plugin.yaml
+
+node_templates:
+    myhost:
+        type:   cloudify.nodes.Compute
+        properties:
+            ip: 127.0.0.1
+            cloudify_agent:
+                user: vagrant
+                key: /home/vagrant/.ssh/id_rsa
+                wait_started_timeout: 60
+
+    salt_abstraction_layer:
+        type:   saltification
+        properties:
+            minion_config:
+                master: salt-master
+                log_level_logfile: info
+            grains:
+                - role: testfile
+                - role: a dummy role
+                - dummy_grain: dummy grain's value
+            salt_api_url: http://salt-master:8000
+            salt_api_auth_data:
+                eauth: pam
+                username: vagrant
+                password: vagrant
+            logger_injection:
+                level: info
+                # show_auth: yes
+        relationships:
+            -   type:   cloudify.relationships.contained_in
+                target: myhost
