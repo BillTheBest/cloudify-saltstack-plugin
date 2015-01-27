@@ -1,5 +1,5 @@
 imports:
-    -   http://www.getcloudify.org/spec/cloudify/3.1rc1/types.yaml
+    -   http://www.getcloudify.org/spec/cloudify/3.1/types.yaml
 
 plugins:
     saltstack:
