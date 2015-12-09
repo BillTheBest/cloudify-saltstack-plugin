@@ -1,22 +1,11 @@
----
-layout: bt_wiki
-title: Salt plugin
-category: Plugins
-draft: false
-abstract: "Salt plugin description"
-weight: 1700
 
-repo_link: https://github.com/cloudify-cosmo/cloudify-saltstack-plugin
----
-{{% gsSummary %}} {{% /gsSummary %}}
+# Salt plugin description
 
 
-A plugin that adds a [*salt*][salt] layer to a Cloudify agent.
+This is a plugin that adds a [*salt*][salt] layer to a Cloudify agent.
 
 *Salt* is a software infrastucture used for **computer orchestration**,
 **remote execution**, **configuration management**, etc.
-
-This plugin can be found at [{{page.repo_link}}][plugin github].
 
 The plugin is currently **under development**.
 
@@ -31,10 +20,10 @@ The plugin is currently **under development**.
 5.  Configures minion's [*grains*][grains].
 6.  Executes [*highstate*][highstate] on the minion.
 
-{{% gsNote title="Note " %}}
+'''note
 This is a one-time operation. Further management of minion state is left
 to the master.
-{{% /gsNote %}}
+'''
 
 
 # Basic how-to
@@ -51,21 +40,21 @@ to the master.
 
     for example:
 
-{{< gsHighlight  yaml  >}}
+'''yaml
 properties:
     minion_config:
         master: 127.0.0.1
     salt_api_url: http(s)://url/to/api/here
     salt_api_auth_data:
         eauth: configuration here
-{{< /gsHighlight >}}
+'''
 
 
 ## Minimum working example
 
 The following is a basic working example:
 
-{{< gsHighlight  yaml  >}}
+'''yaml
 tosca_definitions_version: cloudify_dsl_1_0
 imports:
     - http://www.getcloudify.org/spec/cloudify/3.1rc1/types.yaml
@@ -91,7 +80,7 @@ node_templates:
         relationships:
             -   type: cloudify.relationships.contained_in
                 target: my host
-{{< /gsHighlight >}}
+'''
 
 
 ## Assumptions for the above example
@@ -109,7 +98,7 @@ node_templates:
 
 Example Salt master configuration fulfilling the above assumptions:
 
-{{< gsHighlight  yaml  >}}
+'''yaml
 rest_cherrypy:
     port: 8000
     disable_ssl: True
@@ -119,13 +108,13 @@ external_auth:
         cloudify_user:
             - 'my salted host*'
             - '@wheel'
-{{< /gsHighlight >}}
+'''
 
 Plugin easily can be served with Python's SimpleHTTPServer. Run:
 
-{{< gsHighlight  bash  >}}
+'''bash
 python -m SimpleHTTPServer 8001
-{{< /gsHighlight >}}
+'''
 
 in a directory containing `plugin.yaml` and `plugin.zip`. Also edit
 `plugin.yaml` so that it points to localhost.
@@ -149,13 +138,13 @@ Important properties:
 
     Format is: a list of pairs (`grain name: grain value`), for example:
 
-{{< gsHighlight  yaml  >}}
+'''yaml
 properties:
     grains:
         - my grain: my grain's value 1
         - my grain: my grain's value 2
         - my other grain: my grain's value
-{{< /gsHighlight >}}
+'''
 
 
 Other optional but useful properties:
@@ -199,12 +188,12 @@ to do the actual installation. Otherwise there is a default (and recommended)
 installation procedure that works on both Debian- and RedHat-derived systems
 (it has been tested on RHEL6 and Ubuntu 14.04).
 
-{{% gsNote title="Note 1 " %}}
+'''Note title="Note 1"
 Minion installation takes place **only if** minion package has not already been
 installed.
 
 The actual check is whether `salt-minion` executable is visible in *PATH*.
-{{% /gsNote %}}
+'''
 
 {{% gsNote title="Note 2 " %}}
 Remember that the default installation procedure utilises `apt-get` or `yum`
