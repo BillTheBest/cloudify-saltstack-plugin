@@ -20,10 +20,10 @@ The plugin is currently **under development**.
 5.  Configures minion's [*grains*][grains].
 6.  Executes [*highstate*][highstate] on the minion.
 
-'''note
+```note
 This is a one-time operation. Further management of minion state is left
 to the master.
-'''
+```
 
 
 # Basic how-to
@@ -40,21 +40,21 @@ to the master.
 
     for example:
 
-'''yaml
+```yaml
 properties:
     minion_config:
         master: 127.0.0.1
     salt_api_url: http(s)://url/to/api/here
     salt_api_auth_data:
         eauth: configuration here
-'''
+```
 
 
 ## Minimum working example
 
 The following is a basic working example:
 
-'''yaml
+```yaml
 tosca_definitions_version: cloudify_dsl_1_0
 imports:
     - http://www.getcloudify.org/spec/cloudify/3.1rc1/types.yaml
@@ -80,7 +80,7 @@ node_templates:
         relationships:
             -   type: cloudify.relationships.contained_in
                 target: my host
-'''
+```
 
 
 ## Assumptions for the above example
@@ -98,7 +98,7 @@ node_templates:
 
 Example Salt master configuration fulfilling the above assumptions:
 
-'''yaml
+```yaml
 rest_cherrypy:
     port: 8000
     disable_ssl: True
@@ -108,13 +108,13 @@ external_auth:
         cloudify_user:
             - 'my salted host*'
             - '@wheel'
-'''
+```
 
 Plugin easily can be served with Python's SimpleHTTPServer. Run:
 
-'''bash
+```bash
 python -m SimpleHTTPServer 8001
-'''
+```
 
 in a directory containing `plugin.yaml` and `plugin.zip`. Also edit
 `plugin.yaml` so that it points to localhost.
@@ -138,13 +138,13 @@ Important properties:
 
     Format is: a list of pairs (`grain name: grain value`), for example:
 
-'''yaml
+```yaml
 properties:
     grains:
         - my grain: my grain's value 1
         - my grain: my grain's value 2
         - my other grain: my grain's value
-'''
+```
 
 
 Other optional but useful properties:
@@ -188,12 +188,12 @@ to do the actual installation. Otherwise there is a default (and recommended)
 installation procedure that works on both Debian- and RedHat-derived systems
 (it has been tested on RHEL6 and Ubuntu 14.04).
 
-'''Note title="Note 1"
+```Note title="Note 1"
 Minion installation takes place **only if** minion package has not already been
 installed.
 
 The actual check is whether `salt-minion` executable is visible in *PATH*.
-'''
+```
 
 {{% gsNote title="Note 2 " %}}
 Remember that the default installation procedure utilises `apt-get` or `yum`
