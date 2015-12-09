@@ -2,7 +2,7 @@
 # Salt plugin description
 
 
-This is a plugin that adds a [*salt*][salt] layer to a Cloudify agent.
+This is a plugin that adds a [*salt*](http://www.saltstack.com) layer to a Cloudify agent.
 
 *Salt* is a software infrastucture used for **computer orchestration**,
 **remote execution**, **configuration management**, etc.
@@ -17,8 +17,8 @@ The plugin is currently **under development**.
     with a specific *master*.
 3.  Ensures the minion's key is accepted by the master.
 4.  Starts the minion service.
-5.  Configures minion's [*grains*][grains].
-6.  Executes [*highstate*][highstate] on the minion.
+5.  Configures minion's [*grains*](http://docs.saltstack.com/en/latest/topics/targeting/grains.html).
+6.  Executes [*highstate*](http://docs.saltstack.com/en/latest/ref/states/highstate.html) on the minion.
 
 ```note
 This is a one-time operation. Further management of minion state is left
@@ -93,7 +93,7 @@ node_templates:
     `my secret password`.
 *   User `cloudify_user` has access to wheel module and is allowed to execute
     commands on appropriate minions (check
-    [Salt's external authentication documentation][salt-auth] for more
+    [salt-auth](http://docs.saltstack.com/en/latest/topics/eauth/index.html) for more
     information on *eauth* topic).
 
 Example Salt master configuration fulfilling the above assumptions:
@@ -161,7 +161,7 @@ Other optional but useful properties:
 *   `session_options` - *optional* - a dictionary of parameters to be injected
     into `requests.Session` objects.
 
-    See the documentation of [*Requests*][requests-session] library
+    See the documentation of [*Requests*](http://docs.python-requests.org/en/latest/user/advanced/#session-objects)library
     for details.
 
 *   `logger_injection` - *optional* - a dictionary of logger parameters
@@ -188,17 +188,17 @@ to do the actual installation. Otherwise there is a default (and recommended)
 installation procedure that works on both Debian- and RedHat-derived systems
 (it has been tested on RHEL6 and Ubuntu 14.04).
 
-```Note title="Note 1"
+```note
 Minion installation takes place **only if** minion package has not already been
 installed.
 
 The actual check is whether `salt-minion` executable is visible in *PATH*.
 ```
 
-{{% gsNote title="Note 2 " %}}
+```note
 Remember that the default installation procedure utilises `apt-get` or `yum`
 which in turn require **Internet access**.
-{{% /gsNote %}}
+```
 
 When deciding to provide a custom installation script, bear in mind that:
 
@@ -249,19 +249,11 @@ After successful configuration and authorisation the minion service is started.
 ### Setting up *grains*
 
 The first set of operations after starting the minion is setting up
-[*grains*][grains], if `grains` property has been defined. This process
+[grains](http://docs.saltstack.com/en/latest/topics/targeting/grains.html), if `grains` property has been defined. This process
 is performed over a *HTTP* session with *Salt REST API*.
 
 
 ### Highstate
 
-After setting up grains [*highstate*][highstate] is **always** executed.
+After setting up grains [highstate](http://docs.saltstack.com/en/latest/ref/states/highstate.html) is **always** executed.
 
-
-
-[plugin github]: {{page.repo_link}} "Salt plugin on GitHub"
-[salt]: http://www.saltstack.com "SaltStack"
-[grains]: http://docs.saltstack.com/en/latest/topics/targeting/grains.html "Salt grains description"
-[highstate]: http://docs.saltstack.com/en/latest/ref/states/highstate.html "Salt highstate description"
-[salt-auth]: http://docs.saltstack.com/en/latest/topics/eauth/index.html "Salt External Authentication System"
-[requests-session]: http://docs.python-requests.org/en/latest/user/advanced/#session-objects "Documentation of session objects in Requests library"
